@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Invoice App – v2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sql.js@1.9.0/dist/sql-wasm.js"></script>
+    <script src="https://apis.google.com/js/api.js"></script>
+  </head>
+  <body class="bg-gray-50 p-4">
+    <main id="app" class="max-w-5xl mx-auto">
+      <header class="flex items-center justify-between mb-6">
+        <h1 class="text-2xl font-bold">Lightweight Invoice App</h1>
+        <button
+          id="gdrive-btn"
+          class="px-4 py-2 rounded-lg bg-blue-600 text-white shadow"
+        >
+          Connect Google Drive
+        </button>
+      </header>
+
+      <!-- CLIENTS ---------------------------------------------------->
+      <section class="mb-10">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xl font-semibold">Clients</h2>
+          <button
+            id="new-client-btn"
+            class="px-3 py-1 rounded bg-green-600 text-white shadow"
+          >
+            + New Client
+          </button>
+        </div>
+        <table
+          id="client-table"
+          class="min-w-full bg-white shadow rounded-lg overflow-hidden"
+        >
+          <thead class="bg-gray-200 text-left">
+            <tr>
+              <th class="px-3 py-2">Name</th>
+              <th class="px-3 py-2">Email</th>
+              <th class="px-3 py-2">Address</th>
+            </tr>
+          </thead>
+          <tbody id="client-rows"></tbody>
+        </table>
+      </section>
+
+      <!-- INVOICES --------------------------------------------------->
+      <section>
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xl font-semibold">Invoices</h2>
+          <button
+            id="new-invoice-btn"
+            class="px-3 py-1 rounded bg-green-600 text-white shadow"
+          >
+            + New Invoice
+          </button>
+        </div>
+        <table
+          id="invoice-table"
+          class="min-w-full bg-white shadow rounded-lg overflow-hidden"
+        >
+          <thead class="bg-gray-200 text-left">
+            <tr>
+              <th class="px-3 py-2">#</th>
+              <th class="px-3 py-2">Date</th>
+              <th class="px-3 py-2">Client</th>
+              <th class="px-3 py-2 text-right">Total (€)</th>
+              <th class="px-3 py-2"></th>
+            </tr>
+          </thead>
+          <tbody id="invoice-rows"></tbody>
+        </table>
+      </section>
+
+      <!-- MODALS ===================================================== -->
+      <!-- CLIENT MODAL -->
+      <div
+        id="client-modal"
+        class="fixed inset-0 bg-black/40 flex items-center justify-center hidden"
+      >
+        <div class="bg-white p-6 rounded-xl shadow-xl w-full max-w-lg">
+          <h3 class="text-lg font-semibold mb-4">New Client</h3>
+          <form id="client-form" class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium">Name</label>
+              <input
+                name="name"
+                required
+                class="mt-1 w-full border border-gray-300 rounded p-2"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium">Email</label>
+              <input
+                name="email"
+                type="email"
+                class="mt-1 w-full border border-gray-300 rounded p-2"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium">Address</label>
+              <textarea
+                name="address"
+                rows="2"
+                class="mt-1 w-full border border-gray-300 rounded p-2"
+              ></textarea>
+            </div>
+            <div class="flex justify-end gap-3 pt-4 border-t">
+              <button
+                type="button"
+                id="cancel-client"
+                class="px-4 py-2 rounded border border-gray-300"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                class="px-4 py-2 rounded bg-blue-600 text-white shadow"
+              >
+                Save
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- INVOICE MODAL -->
+      <div
+        id="invoice-modal"
+        class="fixed inset-0 bg-black/40 flex items-center justify-center hidden"
+      >
+        <div class="bg-white p-6 rounded-xl shadow-xl w-full max-w-3xl">
+          <h3 class="text-lg font-semibold mb-4">New Invoice</h3>
+          <form
+            id="invoice-form"
+            class="space-y-4 max-h-[70vh] overflow-y-auto"
+          >
+            <div class="grid grid-cols-3 gap-4">
+              <div>
+                <label class="block text-sm font-medium">Invoice #</label>
+                <input
+                  name="number"
+                  required
+                  class="mt-1 w-full border border-gray-300 rounded p-2"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium">Date</label>
+                <input
+                  type="date"
+                  name="date"
+                  required
+                  class="mt-1 w-full border border-gray-300 rounded p-2"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium">Client</label>
+                <select
+                  name="clientId"
+                  required
+                  class="mt-1 w-full border border-gray-300 rounded p-2"
+                  id="client-select"
+                ></select>
+              </div>
+            </div>
+
+            <!-- Line items -->
+            <div>
+              <h4 class="font-medium mb-2">Items</h4>
+              <table
+                class="w-full border border-gray-300 text-sm"
+                id="items-table"
+              >
+                <thead class="bg-gray-100">
+                  <tr>
+                    <th class="p-2 w-1/2">Description</th>
+                    <th class="p-2 w-20">Qty</th>
+                    <th class="p-2 w-28">Unit €</th>
+                    <th class="p-2 w-8"></th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+              <button
+                type="button"
+                id="add-item-btn"
+                class="mt-2 px-2 py-1 bg-green-500 text-white rounded text-xs"
+              >
+                + Add item
+              </button>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-4 border-t">
+              <button
+                type="button"
+                id="cancel-invoice"
+                class="px-4 py-2 rounded border border-gray-300"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                class="px-4 py-2 rounded bg-blue-600 text-white shadow"
+              >
+                Save & PDF
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </main>
+
+    <script type="module">
+      /* -------------------- CONFIG -------------------- */
+      const SCOPES = "https://www.googleapis.com/auth/drive.file";
+      const CLIENT_ID = "YOUR_OAUTH_CLIENT_ID.apps.googleusercontent.com";
+      const GDRIVE_FILE_NAME = "invoices.db";
+
+      /* -------------------- GLOBALS ------------------- */
+      let SQL, db;
+      let driveFileId = null;
+      let gapiReady = false;
+
+      /* -------------------- SQLite -------------------- */
+      async function initSql() {
+        SQL = await window.initSqlJs({
+          locateFile: (f) =>
+            `https://cdn.jsdelivr.net/npm/sql.js@1.9.0/dist/${f}`,
+        });
+        db = new SQL.Database();
+        db.run(`PRAGMA foreign_keys = ON;`);
+        db.run(`CREATE TABLE IF NOT EXISTS clients (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          email TEXT,
+          address TEXT
+        );`);
+        db.run(`CREATE TABLE IF NOT EXISTS invoices (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          number TEXT NOT NULL,
+          date TEXT NOT NULL,
+          client_id INTEGER NOT NULL,
+          total REAL NOT NULL,
+          FOREIGN KEY (client_id) REFERENCES clients(id)
+        );`);
+        db.run(`CREATE TABLE IF NOT EXISTS invoice_items (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          invoice_id INTEGER NOT NULL,
+          description TEXT,
+          qty REAL,
+          unit REAL,
+          FOREIGN KEY (invoice_id) REFERENCES invoices(id)
+        );`);
+      }
+
+      /* -------- CRUD: Clients -------- */
+      function saveClient(obj) {
+        const stmt = db.prepare(
+          "INSERT INTO clients (name,email,address) VALUES (?,?,?)"
+        );
+        stmt.run([obj.name, obj.email, obj.address]);
+        stmt.free();
+      }
+      function listClients() {
+        const res = db.exec(
+          "SELECT id,name,email,address FROM clients ORDER BY name"
+        );
+        return res.length ? res[0].values : [];
+      }
+
+      /* -------- CRUD: Invoices -------- */
+      function saveInvoice(header, items) {
+        const stmt = db.prepare(
+          "INSERT INTO invoices (number,date,client_id,total) VALUES (?,?,?,?)"
+        );
+        stmt.run([header.number, header.date, header.clientId, header.total]);
+        const invoiceId = db.exec("SELECT last_insert_rowid() AS id")[0]
+          .values[0][0];
+        const itemStmt = db.prepare(
+          "INSERT INTO invoice_items (invoice_id,description,qty,unit) VALUES (?,?,?,?)"
+        );
+        for (const it of items)
+          itemStmt.run([invoiceId, it.description, it.qty, it.unit]);
+        itemStmt.free();
+      }
+      function listInvoices() {
+        const sql = `SELECT inv.id, inv.number, inv.date, c.name, inv.total
+                     FROM invoices inv JOIN clients c ON c.id = inv.client_id
+                     ORDER BY inv.date DESC`;
+        const res = db.exec(sql);
+        return res.length ? res[0].values : [];
+      }
+      function getInvoiceWithItems(id) {
+        const head = db.exec(`SELECT inv.number, inv.date, c.name, inv.total
+                              FROM invoices inv JOIN clients c ON c.id=inv.client_id WHERE inv.id=${id}`)[0]
+          .values[0];
+        const itemsRows = db.exec(
+          `SELECT description, qty, unit FROM invoice_items WHERE invoice_id=${id}`
+        );
+        const items = itemsRows.length
+          ? itemsRows[0].values.map((r) => ({
+              description: r[0],
+              qty: r[1],
+              unit: r[2],
+            }))
+          : [];
+        return {
+          header: {
+            number: head[0],
+            date: head[1],
+            client: head[2],
+            total: head[3],
+          },
+          items,
+        };
+      }
+
+      /* -------------------- PDF ----------------------- */
+      async function buildPdf(invoice) {
+        const { PDFDocument, StandardFonts, rgb } = PDFLib;
+        const pdfDoc = await PDFDocument.create();
+        const page = pdfDoc.addPage([595.28, 841.89]);
+        const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+        page.drawText(`Invoice ${invoice.header.number}`, {
+          x: 50,
+          y: 770,
+          size: 18,
+          font,
+        });
+        page.drawText(`Date: ${invoice.header.date}`, {
+          x: 50,
+          y: 750,
+          size: 12,
+          font,
+        });
+        page.drawText(`Client: ${invoice.header.client}`, {
+          x: 50,
+          y: 730,
+          size: 12,
+          font,
+        });
+
+        let y = 700;
+        page.drawLine({
+          start: { x: 50, y },
+          end: { x: 545, y },
+          thickness: 1,
+          color: rgb(0, 0, 0),
+        });
+        y -= 20;
+        for (const it of invoice.items) {
+          page.drawText(it.description, { x: 50, y, size: 12, font });
+          page.drawText(String(it.qty), { x: 300, y, size: 12, font });
+          page.drawText(it.unit.toFixed(2) + " €", {
+            x: 350,
+            y,
+            size: 12,
+            font,
+          });
+          page.drawText((it.qty * it.unit).toFixed(2) + " €", {
+            x: 500,
+            y,
+            size: 12,
+            font,
+          });
+          y -= 18;
+        }
+        y -= 10;
+        page.drawLine({
+          start: { x: 50, y },
+          end: { x: 545, y },
+          thickness: 1,
+          color: rgb(0, 0, 0),
+        });
+        y -= 20;
+        page.drawText(`Total: ${invoice.header.total.toFixed(2)} €`, {
+          x: 400,
+          y,
+          size: 14,
+          font,
+        });
+
+        const pdfBytes = await pdfDoc.save();
+        const blob = new Blob([pdfBytes], { type: "application/pdf" });
+        window.open(URL.createObjectURL(blob), "_blank");
+      }
+
+      /* -------------------- Drive sync ---------------- */
+      async function exportDb() {
+        return db.export();
+      }
+      async function syncDbToDrive() {
+        if (!driveFileId) return;
+        const blob = new Blob([await exportDb()], {
+          type: "application/x-sqlite3",
+        });
+        await gapi.client.request({
+          path: `upload/drive/v3/files/${driveFileId}`,
+          method: "PATCH",
+          params: { uploadType: "media" },
+          headers: { "Content-Type": "application/x-sqlite3" },
+          body: blob,
+        });
+      }
+
+      /* -------------------- UI Helpers ---------------- */
+      const $ = (sel) => document.querySelector(sel);
+      const $$ = (sel) => document.querySelectorAll(sel);
+      function toggle(el, show) {
+        el.classList[show ? "remove" : "add"]("hidden");
+      }
+
+      /* ---- renderers ---- */
+      function renderClients() {
+        const tbody = $("#client-rows");
+        tbody.innerHTML = "";
+        for (const row of listClients()) {
+          const tr = document.createElement("tr");
+          tr.className = "odd:bg-gray-50";
+          tr.innerHTML = `<td class="px-3 py-2">${
+            row[1]
+          }</td><td class="px-3 py-2">${
+            row[2] ?? ""
+          }</td><td class="px-3 py-2">${row[3] ?? ""}</td>`;
+          tbody.appendChild(tr);
+        }
+        const sel = $("#client-select");
+        sel.innerHTML =
+          '<option value="" disabled selected hidden>Select…</option>';
+        for (const row of listClients())
+          sel.innerHTML += `<option value="${row[0]}">${row[1]}</option>`;
+      }
+      function renderInvoices() {
+        const tbody = $("#invoice-rows");
+        tbody.innerHTML = "";
+        for (const row of listInvoices()) {
+          const tr = document.createElement("tr");
+          tr.className = "odd:bg-gray-50";
+          tr.innerHTML = `
+            <td class="px-3 py-2">${row[1]}</td>
+            <td class="px-3 py-2">${row[2]}</td>
+            <td class="px-3 py-2">${row[3]}</td>
+            <td class="px-3 py-2 text-right">${row[4].toFixed(2)}</td>
+            <td class="px-3 py-2 text-right"><button data-id="${
+              row[0]
+            }" class="text-blue-600 hover:underline view-pdf">PDF</button></td>`;
+          tbody.appendChild(tr);
+        }
+      }
+
+      function addItemRow(desc = "", qty = "", unit = "") {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="border-t"><input class="w-full p-2" name="description" value="${desc}" required></td>
+          <td class="border-t"><input type="number" step="0.01" name="qty" value="${qty}" class="w-full p-2" required></td>
+          <td class="border-t"><input type="number" step="0.01" name="unit" value="${unit}" class="w-full p-2" required></td>
+          <td class="border-t text-center"><button type="button" class="remove-item text-red-600">✕</button></td>`;
+        $("#items-table tbody").appendChild(tr);
+      }
+
+      /* -------------------- App Init ------------------ */
+      document.addEventListener("DOMContentLoaded", async () => {
+        await initSql();
+        renderClients();
+        renderInvoices();
+
+        /* Client modal */
+        $("#new-client-btn").onclick = () => toggle($("#client-modal"), true);
+        $("#cancel-client").onclick = () => toggle($("#client-modal"), false);
+        $("#client-form").onsubmit = async (e) => {
+          e.preventDefault();
+          const fd = new FormData(e.target);
+          saveClient({
+            name: fd.get("name"),
+            email: fd.get("email"),
+            address: fd.get("address"),
+          });
+          renderClients();
+          await syncDbToDrive();
+          toggle($("#client-modal"), false);
+          e.target.reset();
+        };
+
+        /* Invoice modal */
+        $("#new-invoice-btn").onclick = () => {
+          toggle($("#invoice-modal"), true);
+          addItemRow();
+        };
+        $("#cancel-invoice").onclick = () => {
+          toggle($("#invoice-modal"), false);
+          $("#invoice-form").reset();
+          $("#items-table tbody").innerHTML = "";
+        };
+        $("#add-item-btn").onclick = () => addItemRow();
+        $("#items-table").addEventListener("click", (e) => {
+          if (e.target.matches(".remove-item")) e.target.closest("tr").remove();
+        });
+        $("#invoice-form").onsubmit = async (e) => {
+          e.preventDefault();
+          const fd = new FormData(e.target);
+          const items = Array.from($("#items-table tbody").rows).map((r) => ({
+            description: r.querySelector('[name="description"]').value,
+            qty: Number(r.querySelector('[name="qty"]').value),
+            unit: Number(r.querySelector('[name="unit"]').value),
+          }));
+          const total = items.reduce((s, i) => s + i.qty * i.unit, 0);
+          const header = {
+            number: fd.get("number"),
+            date: fd.get("date"),
+            clientId: Number(fd.get("clientId")),
+            total,
+          };
+          saveInvoice(header, items);
+          renderInvoices();
+          await syncDbToDrive();
+          const full = getInvoiceWithItems(listInvoices()[0][0]); // last inserted is first row due to ORDER BY
+          buildPdf(full);
+          toggle($("#invoice-modal"), false);
+          e.target.reset();
+          $("#items-table tbody").innerHTML = "";
+        };
+
+        /* PDF buttons */
+        $("#invoice-table").addEventListener("click", (e) => {
+          if (e.target.matches(".view-pdf")) {
+            const id = e.target.dataset.id;
+            buildPdf(getInvoiceWithItems(id));
+          }
+        });
+
+        /* Google Drive */
+        $("#gdrive-btn").onclick = async () => {
+          if (!gapiReady) {
+            await gapi.load("client:auth2");
+            await gapi.client.init({
+              clientId: CLIENT_ID,
+              scope: SCOPES,
+              discoveryDocs: [
+                "https://www.googleapis.com/discovery/v1/apis/drive/v3/rest",
+              ],
+            });
+            gapiReady = true;
+          }
+          await gapi.auth2.getAuthInstance().signIn();
+          // find or create file
+          const list = await gapi.client.drive.files.list({
+            q: `name='${GDRIVE_FILE_NAME}' and trashed=false`,
+            fields: "files(id)",
+            pageSize: 1,
+          });
+          if (list.result.files.length) {
+            driveFileId = list.result.files[0].id;
+            const file = await gapi.client.drive.files.get({
+              fileId: driveFileId,
+              alt: "media",
+            });
+            db = new SQL.Database(
+              new Uint8Array(file.body.split("").map((c) => c.charCodeAt(0)))
+            );
+          } else {
+            const blob = new Blob([await exportDb()], {
+              type: "application/x-sqlite3",
+            });
+            const form = new FormData();
+            form.append(
+              "metadata",
+              new Blob(
+                [
+                  JSON.stringify({
+                    name: GDRIVE_FILE_NAME,
+                    mimeType: "application/x-sqlite3",
+                  }),
+                ],
+                { type: "application/json" }
+              )
+            );
+            form.append("file", blob);
+            const resp = await fetch(
+              "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id",
+              {
+                method: "POST",
+                headers: {
+                  Authorization: "Bearer " + gapi.auth.getToken().access_token,
+                },
+                body: form,
+              }
+            );
+            driveFileId = (await resp.json()).id;
+          }
+          renderClients();
+          renderInvoices();
+          alert("Google Drive linked ✔");
+        };
+      });
+    </script>
+  </body>
+</html>
