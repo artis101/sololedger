@@ -50,3 +50,6 @@ pnpm preview
 ## Deployment
 
 When deploying, make sure to set the `VITE_GOOGLE_CLIENT_ID` environment variable in your hosting platform.
+## License
+
+This project is licensed under the GNU Affero General Public License version 3 (AGPLv3). See the [LICENSE](LICENSE) file for details.

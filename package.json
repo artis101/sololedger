@@ -9,7 +9,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "AGPL-3.0-only",
   "description": "",
   "devDependencies": {
     "autoprefixer": "^10.4.14",
