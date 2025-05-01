@@ -1,4 +1,5 @@
 import { PDFDocument, rgb } from "pdf-lib";
+import fontkit from "@pdf-lib/fontkit";
 
 // URL of a TrueType font that supports UTF-8 (Open Sans)
 const FONT_URL = 'https://fonts.gstatic.com/s/opensans/v20/mem8YaGs126MiZpBA-UFVp0e.ttf';
@@ -20,6 +21,8 @@ export async function buildPdf(
   { previewEl = null, open = true } = {}
 ) {
   const pdfDoc = await PDFDocument.create();
+  // Register fontkit to embed custom fonts for UTF-8 support
+  pdfDoc.registerFontkit(fontkit);
   const page = pdfDoc.addPage([595.28, 841.89]);
   // Embed a Unicode TrueType font for UTF-8 support
   const fontBytes = await fetchFontBytes();

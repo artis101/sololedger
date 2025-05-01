@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "pdf-lib": "^1.17.1",
+    "@pdf-lib/fontkit": "^1.1.0",
     "sql.js": "^1.13.0"
   }
 }
