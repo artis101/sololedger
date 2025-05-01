@@ -317,7 +317,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('#gdrive-btn').onclick = async () => {
     try {
       if (!CLIENT_ID) {
-        alert('Please set your OAuth Client ID in the config.js file');
+        alert('Google OAuth Client ID not found. Please set the VITE_GOOGLE_CLIENT_ID environment variable.');
+        console.error('Missing environment variable: VITE_GOOGLE_CLIENT_ID');
         return;
       }
       
