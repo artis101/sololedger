@@ -1,4 +1,19 @@
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { PDFDocument, rgb } from "pdf-lib";
+
+// URL of a TrueType font that supports UTF-8 (Open Sans)
+const FONT_URL = 'https://fonts.gstatic.com/s/opensans/v20/mem8YaGs126MiZpBA-UFVp0e.ttf';
+// Cache for fetched font bytes
+let fontBytesPromise;
+
+async function fetchFontBytes() {
+  if (!fontBytesPromise) {
+    fontBytesPromise = fetch(FONT_URL).then((res) => {
+      if (!res.ok) throw new Error('Failed to load font: ' + res.status);
+      return res.arrayBuffer();
+    });
+  }
+  return fontBytesPromise;
+}
 
 export async function buildPdf(
   invoice,
@@ -6,7 +21,9 @@ export async function buildPdf(
 ) {
   const pdfDoc = await PDFDocument.create();
   const page = pdfDoc.addPage([595.28, 841.89]);
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  // Embed a Unicode TrueType font for UTF-8 support
+  const fontBytes = await fetchFontBytes();
+  const font = await pdfDoc.embedFont(fontBytes, { subset: true });
 
   page.drawText(`Invoice ${invoice.header.number}`, {
     x: 50,
