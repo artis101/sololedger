@@ -1,14 +1,73 @@
-import initSqlJs from 'sql.js';
+import initSqlJs from "sql.js";
+
+// --------------------
+// IndexedDB persistence
+const IDB_DB_NAME = "sololedger";
+const IDB_STORE_NAME = "sqlite";
+
+function openIdb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_DB_NAME, 1);
+    req.onupgradeneeded = () => {
+      const dbid = req.result;
+      if (!dbid.objectStoreNames.contains(IDB_STORE_NAME)) {
+        dbid.createObjectStore(IDB_STORE_NAME);
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function persistLocal() {
+  const idb = await openIdb();
+  return new Promise((resolve, reject) => {
+    const tx = idb.transaction(IDB_STORE_NAME, "readwrite");
+    const store = tx.objectStore(IDB_STORE_NAME);
+    const data = db.export();
+    const req = store.put(data, "db");
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function loadLocal() {
+  const idb = await openIdb();
+  return new Promise((resolve, reject) => {
+    const tx = idb.transaction(IDB_STORE_NAME, "readonly");
+    const store = tx.objectStore(IDB_STORE_NAME);
+    const req = store.get("db");
+    req.onsuccess = () => {
+      const data = req.result;
+      if (data) {
+        loadDb(data);
+        resolve(true);
+      } else {
+        resolve(false);
+      }
+    };
+    req.onerror = () => reject(req.error);
+  });
+}
+// --------------------
 
 let SQL, db;
 
 export async function initSql() {
   try {
     SQL = await initSqlJs({
-      locateFile: file => `${import.meta.env.BASE_URL}${file}`
+      locateFile: (file) => `${import.meta.env.BASE_URL}${file}`,
     });
-    
-    db = new SQL.Database();
+    // Try to load a cached DB from IndexedDB, otherwise create new
+    let loaded = false;
+    try {
+      loaded = await loadLocal();
+    } catch (e) {
+      console.error("Error loading local DB:", e);
+    }
+    if (!loaded) {
+      db = new SQL.Database();
+    }
     db.run(`PRAGMA foreign_keys = ON;`);
     db.run(`CREATE TABLE IF NOT EXISTS clients (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -32,10 +91,10 @@ export async function initSql() {
       unit REAL,
       FOREIGN KEY (invoice_id) REFERENCES invoices(id)
     );`);
-    
+
     return true;
   } catch (error) {
-    console.error('Error initializing SQL database:', error);
+    console.error("Error initializing SQL database:", error);
     throw new Error(`Database initialization failed: ${error.message}`);
   }
 }
@@ -61,11 +120,13 @@ export function saveClient(obj) {
     stmt.free();
   }
   // Persist changes locally
-  persistLocal().catch(err => console.error('persistLocal error:', err));
+  persistLocal().catch((err) => console.error("persistLocal error:", err));
 }
 
 export function getClient(id) {
-  const result = db.exec(`SELECT id, name, email, address FROM clients WHERE id = ${id}`);
+  const result = db.exec(
+    `SELECT id, name, email, address FROM clients WHERE id = ${id}`
+  );
   if (result.length === 0 || result[0].values.length === 0) {
     return null;
   }
@@ -74,24 +135,28 @@ export function getClient(id) {
     id: row[0],
     name: row[1],
     email: row[2],
-    address: row[3]
+    address: row[3],
   };
 }
 
 export function deleteClient(id) {
   // Check if client has invoices
-  const invoicesCheck = db.exec(`SELECT COUNT(*) FROM invoices WHERE client_id = ${id}`);
+  const invoicesCheck = db.exec(
+    `SELECT COUNT(*) FROM invoices WHERE client_id = ${id}`
+  );
   const count = invoicesCheck[0].values[0][0];
-  
+
   if (count > 0) {
-    throw new Error(`Cannot delete client with ID ${id} because it has associated invoices.`);
+    throw new Error(
+      `Cannot delete client with ID ${id} because it has associated invoices.`
+    );
   }
-  
+
   const stmt = db.prepare("DELETE FROM clients WHERE id = ?");
   stmt.run([id]);
   stmt.free();
   // Persist changes locally
-  persistLocal().catch(err => console.error('persistLocal error:', err));
+  persistLocal().catch((err) => console.error("persistLocal error:", err));
 }
 
 export function listClients() {
@@ -103,20 +168,28 @@ export function listClients() {
 
 export function saveInvoice(header, items) {
   let invoiceId;
-  
+
   if (header.id) {
     // Update existing invoice
     const stmt = db.prepare(
       "UPDATE invoices SET number = ?, date = ?, client_id = ?, total = ? WHERE id = ?"
     );
-    stmt.run([header.number, header.date, header.clientId, header.total, header.id]);
+    stmt.run([
+      header.number,
+      header.date,
+      header.clientId,
+      header.total,
+      header.id,
+    ]);
     stmt.free();
-    
+
     // Delete existing items
-    const deleteStmt = db.prepare("DELETE FROM invoice_items WHERE invoice_id = ?");
+    const deleteStmt = db.prepare(
+      "DELETE FROM invoice_items WHERE invoice_id = ?"
+    );
     deleteStmt.run([header.id]);
     deleteStmt.free();
-    
+
     invoiceId = header.id;
   } else {
     // Insert new invoice
@@ -126,7 +199,7 @@ export function saveInvoice(header, items) {
     stmt.run([header.number, header.date, header.clientId, header.total]);
     invoiceId = db.exec("SELECT last_insert_rowid() AS id")[0].values[0][0];
   }
-  
+
   // Insert new items
   const itemStmt = db.prepare(
     "INSERT INTO invoice_items (invoice_id,description,qty,unit) VALUES (?,?,?,?)"
@@ -136,22 +209,24 @@ export function saveInvoice(header, items) {
   }
   itemStmt.free();
   // Persist changes locally
-  persistLocal().catch(err => console.error('persistLocal error:', err));
+  persistLocal().catch((err) => console.error("persistLocal error:", err));
   return invoiceId;
 }
 
 export function deleteInvoice(id) {
   // First delete invoice items
-  const deleteItemsStmt = db.prepare("DELETE FROM invoice_items WHERE invoice_id = ?");
+  const deleteItemsStmt = db.prepare(
+    "DELETE FROM invoice_items WHERE invoice_id = ?"
+  );
   deleteItemsStmt.run([id]);
   deleteItemsStmt.free();
-  
+
   // Then delete the invoice
   const deleteInvoiceStmt = db.prepare("DELETE FROM invoices WHERE id = ?");
   deleteInvoiceStmt.run([id]);
   deleteInvoiceStmt.free();
   // Persist changes locally
-  persistLocal().catch(err => console.error('persistLocal error:', err));
+  persistLocal().catch((err) => console.error("persistLocal error:", err));
 }
 
 export function listInvoices() {
@@ -193,12 +268,12 @@ export async function exportDb() {
 
 export async function syncDbToDrive(driveFileId) {
   if (!driveFileId) return;
-  
+
   try {
     const blob = new Blob([await exportDb()], {
       type: "application/x-sqlite3",
     });
-    
+
     await gapi.client.request({
       path: `upload/drive/v3/files/${driveFileId}`,
       method: "PATCH",
@@ -206,10 +281,10 @@ export async function syncDbToDrive(driveFileId) {
       headers: { "Content-Type": "application/x-sqlite3" },
       body: blob,
     });
-    
+
     return true;
   } catch (error) {
-    console.error('Error syncing to Google Drive:', error);
+    console.error("Error syncing to Google Drive:", error);
     // Don't show alert here since this is called from other functions
     return false;
   }
