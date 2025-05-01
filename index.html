@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Invoice App – v2</title>
     <script src="https://apis.google.com/js/api.js"></script>
-    <link rel="stylesheet" href="/src/index.css">
+    <script src="https://accounts.google.com/gsi/client"></script>
+    <link rel="stylesheet" href="/src/index.css" />
     <script type="module" src="/src/main.js"></script>
   </head>
   <body class="bg-gray-50 p-4">
@@ -83,7 +84,9 @@
         class="fixed inset-0 bg-black/40 flex items-center justify-center hidden"
       >
         <div class="bg-white p-6 rounded-xl shadow-xl w-full max-w-lg">
-          <h3 class="text-lg font-semibold mb-4" id="client-modal-title">New Client</h3>
+          <h3 class="text-lg font-semibold mb-4" id="client-modal-title">
+            New Client
+          </h3>
           <form id="client-form" class="space-y-4">
             <input type="hidden" name="clientId" id="edit-client-id" value="" />
             <div>
@@ -144,12 +147,19 @@
         class="fixed inset-0 bg-black/40 flex items-center justify-center hidden"
       >
         <div class="bg-white p-6 rounded-xl shadow-xl w-full max-w-3xl">
-          <h3 class="text-lg font-semibold mb-4" id="invoice-modal-title">New Invoice</h3>
+          <h3 class="text-lg font-semibold mb-4" id="invoice-modal-title">
+            New Invoice
+          </h3>
           <form
             id="invoice-form"
             class="space-y-4 max-h-[70vh] overflow-y-auto"
           >
-            <input type="hidden" name="invoiceId" id="edit-invoice-id" value="" />
+            <input
+              type="hidden"
+              name="invoiceId"
+              id="edit-invoice-id"
+              value=""
+            />
             <div class="grid grid-cols-3 gap-4">
               <div>
                 <label class="block text-sm font-medium">Invoice #</label>
