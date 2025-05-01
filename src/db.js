@@ -60,6 +60,8 @@ export function saveClient(obj) {
     stmt.run([obj.name, obj.email, obj.address]);
     stmt.free();
   }
+  // Persist changes locally
+  persistLocal().catch(err => console.error('persistLocal error:', err));
 }
 
 export function getClient(id) {
@@ -88,6 +90,8 @@ export function deleteClient(id) {
   const stmt = db.prepare("DELETE FROM clients WHERE id = ?");
   stmt.run([id]);
   stmt.free();
+  // Persist changes locally
+  persistLocal().catch(err => console.error('persistLocal error:', err));
 }
 
 export function listClients() {
@@ -131,7 +135,8 @@ export function saveInvoice(header, items) {
     itemStmt.run([invoiceId, it.description, it.qty, it.unit]);
   }
   itemStmt.free();
-  
+  // Persist changes locally
+  persistLocal().catch(err => console.error('persistLocal error:', err));
   return invoiceId;
 }
 
@@ -145,6 +150,8 @@ export function deleteInvoice(id) {
   const deleteInvoiceStmt = db.prepare("DELETE FROM invoices WHERE id = ?");
   deleteInvoiceStmt.run([id]);
   deleteInvoiceStmt.free();
+  // Persist changes locally
+  persistLocal().catch(err => console.error('persistLocal error:', err));
 }
 
 export function listInvoices() {
