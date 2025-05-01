@@ -39,6 +39,31 @@ document.addEventListener("DOMContentLoaded", async () => {
     );
   }
 
+  // Live preview builder: updates preview iframe in invoice modal
+  async function updateInvoicePreview() {
+    try {
+      const form = $("#invoice-form");
+      const fd = new FormData(form);
+      const number = fd.get("number");
+      const date = fd.get("date");
+      const clientSelect = form.elements.clientId;
+      const clientName = clientSelect.options[clientSelect.selectedIndex]?.text || "";
+      const rows = Array.from($("#items-table tbody").rows);
+      const items = rows.map((r) => ({
+        description: r.querySelector('[name="description"]').value,
+        qty: Number(r.querySelector('[name="qty"]').value),
+        unit: Number(r.querySelector('[name="unit"]').value),
+      }));
+      const total = items.reduce((s, i) => s + i.qty * i.unit, 0);
+      const invoiceObj = { header: { number, date, client: clientName, total }, items };
+      const previewEl = $("#invoice-preview");
+      if (previewEl) {
+        await buildPdf(invoiceObj, { previewEl, open: false });
+      }
+    } catch (error) {
+      console.error("Error updating invoice preview:", error);
+    }
+  }
   // Client modal
   $("#new-client-btn").onclick = () => {
     $("#client-modal-title").textContent = "New Client";
@@ -142,6 +167,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     $("#delete-invoice-btn").classList.add("hidden");
     addItemRow();
     toggle($("#invoice-modal"), true);
+    updateInvoicePreview();
   };
 
   $("#cancel-invoice").onclick = () => {
@@ -150,10 +176,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     $("#items-table tbody").innerHTML = "";
   };
 
-  $("#add-item-btn").onclick = () => addItemRow();
+  $("#add-item-btn").onclick = () => {
+    addItemRow();
+    updateInvoicePreview();
+  };
 
   $("#items-table").addEventListener("click", (e) => {
-    if (e.target.matches(".remove-item")) e.target.closest("tr").remove();
+    if (e.target.matches(".remove-item")) {
+      e.target.closest("tr").remove();
+      updateInvoicePreview();
+    }
   });
 
   // Edit/Delete invoice
@@ -185,6 +217,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         $("#delete-invoice-btn").classList.remove("hidden");
         toggle($("#invoice-modal"), true);
+        updateInvoicePreview();
       }
     } else if (e.target.matches(".delete-invoice")) {
       const id = Number(e.target.dataset.id);
@@ -319,6 +352,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       alert(`Error saving invoice: ${error.message}`);
     }
   };
+
+  // Live preview on form changes
+  $("#invoice-form").addEventListener("input", updateInvoicePreview);
+  $("#invoice-form").addEventListener("change", updateInvoicePreview);
 
   // PDF buttons
   $("#invoice-table").addEventListener("click", (e) => {

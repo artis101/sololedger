@@ -1,6 +1,9 @@
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
-export async function buildPdf(invoice) {
+export async function buildPdf(
+  invoice,
+  { previewEl = null, open = true } = {}
+) {
   const pdfDoc = await PDFDocument.create();
   const page = pdfDoc.addPage([595.28, 841.89]);
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -61,5 +64,12 @@ export async function buildPdf(invoice) {
 
   const pdfBytes = await pdfDoc.save();
   const blob = new Blob([pdfBytes], { type: "application/pdf" });
-  window.open(URL.createObjectURL(blob), "_blank");
+  const url = URL.createObjectURL(blob);
+  if (previewEl) {
+    previewEl.src = url;
+  }
+  if (open) {
+    window.open(url, "_blank");
+  }
+  return url;
 }
