@@ -1,12 +1,11 @@
 // Type declaration for importing WASM assets via Vite
-// Type declaration for importing WASM assets via Vite
-declare module '*.wasm?url' {
+declare module "*.wasm?url" {
   const url: string;
   export default url;
 }
 
 // SQL.js initialization module
-declare module 'sql.js' {
+declare module "sql.js" {
   const initSqlJs: any;
   export default initSqlJs;
 }

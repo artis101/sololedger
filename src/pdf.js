@@ -2,14 +2,15 @@ import { PDFDocument, rgb } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 
 // URL of a TrueType font that supports UTF-8 (Open Sans)
-const FONT_URL = 'https://fonts.gstatic.com/s/opensans/v20/mem8YaGs126MiZpBA-UFVp0e.ttf';
+const FONT_URL =
+  "https://fonts.gstatic.com/s/opensans/v20/mem8YaGs126MiZpBA-UFVp0e.ttf";
 // Cache for fetched font bytes
 let fontBytesPromise;
 
 async function fetchFontBytes() {
   if (!fontBytesPromise) {
     fontBytesPromise = fetch(FONT_URL).then((res) => {
-      if (!res.ok) throw new Error('Failed to load font: ' + res.status);
+      if (!res.ok) throw new Error("Failed to load font: " + res.status);
       return res.arrayBuffer();
     });
   }
