@@ -115,13 +115,21 @@ export function initInvoiceHandlers() {
       const id = Number(e.target.dataset.id);
       try {
         // Toggle the paid status
-        await toggleInvoicePaid(id);
+        const result = await toggleInvoicePaid(id);
         
         // Refresh the invoices list
         const clients = await listClients();
         const invoices = await listInvoices();
         await renderInvoices();
         await updateDashboardStats(clients, invoices);
+        
+        // Show a notification to the user
+        if (result.status === 1) {
+          // If now marked as paid
+          const paidDate = new Date(result.paidAt).toLocaleDateString();
+          const paidTime = new Date(result.paidAt).toLocaleTimeString();
+          console.log(`Invoice marked as paid on ${paidDate} at ${paidTime}`);
+        }
       } catch (error) {
         console.error('Error toggling invoice paid status:', error);
         alert(`Error updating invoice status: ${error.message}`);
@@ -130,13 +138,21 @@ export function initInvoiceHandlers() {
       const id = Number(e.target.dataset.id);
       try {
         // Toggle the locked status
-        await toggleInvoiceLocked(id);
+        const result = await toggleInvoiceLocked(id);
         
         // Refresh the invoices list
         const clients = await listClients();
         const invoices = await listInvoices();
         await renderInvoices();
         await updateDashboardStats(clients, invoices);
+        
+        // Show a notification to the user
+        if (result.status === 1) {
+          // If now locked
+          const lockedDate = new Date(result.lockedAt).toLocaleDateString();
+          const lockedTime = new Date(result.lockedAt).toLocaleTimeString();
+          console.log(`Invoice locked on ${lockedDate} at ${lockedTime}`);
+        }
       } catch (error) {
         console.error('Error toggling invoice locked status:', error);
         alert(`Error updating invoice lock status: ${error.message}`);

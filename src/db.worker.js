@@ -79,6 +79,36 @@ const migrations = [
       db.run("ALTER TABLE business_settings ADD COLUMN invoice_number_last_reset TEXT");
     },
   },
+  {
+    version: 4,
+    up: (db) => {
+      // Add locked column to invoices table with default value of 0 (unlocked)
+      db.run("ALTER TABLE invoices ADD COLUMN locked INTEGER DEFAULT 0");
+    },
+  },
+  {
+    version: 5,
+    up: (db) => {
+      // Create invoice_audit table for tracking changes to locked invoices
+      db.run(`CREATE TABLE IF NOT EXISTS invoice_audit (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        invoice_id INTEGER NOT NULL,
+        timestamp TEXT NOT NULL,
+        action TEXT NOT NULL,
+        details TEXT,
+        FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE
+      )`);
+    },
+  },
+  {
+    version: 6,
+    up: (db) => {
+      // Add date columns for tracking when invoices were locked, paid, and sent
+      db.run("ALTER TABLE invoices ADD COLUMN locked_at TEXT");
+      db.run("ALTER TABLE invoices ADD COLUMN paid_at TEXT");
+      db.run("ALTER TABLE invoices ADD COLUMN sent_at TEXT");
+    },
+  },
 ];
 
 function runMigrations() {
@@ -120,6 +150,10 @@ async function initSql() {
       client_id INTEGER NOT NULL,
       total REAL NOT NULL,
       paid INTEGER DEFAULT 0,
+      locked INTEGER DEFAULT 0,
+      locked_at TEXT,
+      paid_at TEXT,
+      sent_at TEXT,
       FOREIGN KEY (client_id) REFERENCES clients(id)
   );`);
   db.run(`CREATE TABLE IF NOT EXISTS invoice_items (
@@ -128,6 +162,15 @@ async function initSql() {
       description TEXT,
       qty REAL,
       unit REAL,
+      FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE
+  );`);
+  
+  db.run(`CREATE TABLE IF NOT EXISTS invoice_audit (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      invoice_id INTEGER NOT NULL,
+      timestamp TEXT NOT NULL,
+      action TEXT NOT NULL,
+      details TEXT,
       FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE
   );`);
   db.run(`CREATE TABLE IF NOT EXISTS business_settings (
@@ -185,7 +228,8 @@ function listClients() {
 }
 
 function listInvoices() {
-  const sql = `SELECT inv.id, inv.number, inv.date, c.name, inv.total, inv.paid
+  const sql = `SELECT inv.id, inv.number, inv.date, c.name, inv.total, inv.paid, inv.locked,
+               inv.locked_at, inv.paid_at, inv.sent_at
                FROM invoices inv JOIN clients c ON c.id = inv.client_id
                ORDER BY inv.date DESC`;
   const res = db.exec(sql);
@@ -279,11 +323,27 @@ function saveInvoice(header, items) {
     
     let invoiceId;
     if (header.id) {
+      // Check if invoice is locked before allowing updates
+      const isLocked = getLockedStatus(header.id);
+      if (isLocked) {
+        if (header.forceSave) {
+          // Log forced edit of locked invoice
+          logInvoiceAudit(header.id, "forced_edit", {
+            reason: header.forceSaveReason || "No reason provided",
+            timestamp: new Date().toISOString()
+          });
+        } else {
+          throw new Error("Invoice is locked. Unlock it first or use forceSave option to override.");
+        }
+      }
+      
       // Preserve paid status when updating if not explicitly set
       const existingPaidStatus = header.paid !== undefined ? header.paid : getPaidStatus(header.id);
+      // Preserve locked status when updating if not explicitly set
+      const existingLockedStatus = header.locked !== undefined ? header.locked : getLockedStatus(header.id);
       
       const stmt = db.prepare(
-        "UPDATE invoices SET number=?, date=?, client_id=?, total=?, paid=? WHERE id=?"
+        "UPDATE invoices SET number=?, date=?, client_id=?, total=?, paid=?, locked=? WHERE id=?"
       );
       try {
         stmt.run([
@@ -292,6 +352,7 @@ function saveInvoice(header, items) {
           header.clientId,
           calculatedTotal, // Use calculated total instead of header.total
           existingPaidStatus,
+          existingLockedStatus,
           header.id,
         ]);
       } finally {
@@ -306,12 +367,14 @@ function saveInvoice(header, items) {
       invoiceId = header.id;
     } else {
       const stmt = db.prepare(
-        "INSERT INTO invoices (number,date,client_id,total,paid) VALUES (?,?,?,?,?)"
+        "INSERT INTO invoices (number,date,client_id,total,paid,locked) VALUES (?,?,?,?,?,?)"
       );
       try {
         // For new invoices, use the provided paid status or default to 0 (unpaid)
         const paidStatus = header.paid !== undefined ? header.paid : 0;
-        stmt.run([header.number, header.date, header.clientId, calculatedTotal, paidStatus]); // Use calculated total
+        // For new invoices, use the provided locked status or default to 0 (unlocked)
+        const lockedStatus = header.locked !== undefined ? header.locked : 0;
+        stmt.run([header.number, header.date, header.clientId, calculatedTotal, paidStatus, lockedStatus]); // Use calculated total
       } finally {
         stmt.free();
       }
@@ -334,14 +397,26 @@ function saveInvoice(header, items) {
 
 function getInvoiceWithItems(id) {
   const headStmt = db.prepare(
-    "SELECT inv.number, inv.date, c.name, inv.total, inv.paid FROM invoices inv JOIN clients c ON c.id=inv.client_id WHERE inv.id=?"
+    `SELECT inv.number, inv.date, c.name, inv.total, inv.paid, inv.locked,
+     inv.locked_at, inv.paid_at, inv.sent_at 
+     FROM invoices inv JOIN clients c ON c.id=inv.client_id WHERE inv.id=?`
   );
   let header;
   try {
     headStmt.bind([id]);
     headStmt.step();
     const h = headStmt.get();
-    header = { number: h[0], date: h[1], client: h[2], total: h[3], paid: h[4] };
+    header = { 
+      number: h[0], 
+      date: h[1], 
+      client: h[2], 
+      total: h[3], 
+      paid: h[4], 
+      locked: h[5],
+      lockedAt: h[6],
+      paidAt: h[7],
+      sentAt: h[8]
+    };
   } finally {
     headStmt.free();
   }
@@ -386,6 +461,10 @@ function wipeDatabase() {
         client_id INTEGER NOT NULL,
         total REAL NOT NULL,
         paid INTEGER DEFAULT 0,
+        locked INTEGER DEFAULT 0,
+        locked_at TEXT,
+        paid_at TEXT,
+        sent_at TEXT,
         FOREIGN KEY (client_id) REFERENCES clients(id)
     );`);
     db.run(`CREATE TABLE IF NOT EXISTS invoice_items (
@@ -394,6 +473,15 @@ function wipeDatabase() {
         description TEXT,
         qty REAL,
         unit REAL,
+        FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE
+    );`);
+    
+    db.run(`CREATE TABLE IF NOT EXISTS invoice_audit (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        invoice_id INTEGER NOT NULL,
+        timestamp TEXT NOT NULL,
+        action TEXT NOT NULL,
+        details TEXT,
         FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE
     );`);
     db.run(`CREATE TABLE IF NOT EXISTS business_settings (
@@ -455,15 +543,132 @@ function toggleInvoicePaid(id) {
     // Toggle it (1 becomes 0, 0 becomes 1)
     const newStatus = currentStatus ? 0 : 1;
     
-    const stmt = db.prepare("UPDATE invoices SET paid = ? WHERE id = ?");
+    // If marking as paid, set the paid_at timestamp
+    // If marking as unpaid, clear the paid_at timestamp
+    const paidAt = newStatus ? new Date().toISOString() : null;
+    
+    const stmt = db.prepare("UPDATE invoices SET paid = ?, paid_at = ? WHERE id = ?");
     try {
-      stmt.run([newStatus, id]);
+      stmt.run([newStatus, paidAt, id]);
     } finally {
       stmt.free();
     }
     
     persistLocal().catch(() => {});
-    return newStatus;
+    return { status: newStatus, paidAt };
+  });
+}
+
+// Get locked status for an invoice
+function getLockedStatus(invoiceId) {
+  try {
+    const stmt = db.prepare("SELECT locked FROM invoices WHERE id = ?");
+    stmt.bind([invoiceId]);
+    if (stmt.step()) {
+      return stmt.get()[0];
+    }
+    return 0; // Default to unlocked if not found
+  } catch (error) {
+    console.error("Error getting locked status:", error);
+    return 0;
+  }
+}
+
+// Add an entry to the invoice audit log
+function logInvoiceAudit(invoiceId, action, details = null) {
+  try {
+    const timestamp = new Date().toISOString();
+    const stmt = db.prepare(
+      "INSERT INTO invoice_audit (invoice_id, timestamp, action, details) VALUES (?, ?, ?, ?)"
+    );
+    stmt.run([invoiceId, timestamp, action, details ? JSON.stringify(details) : null]);
+    stmt.free();
+    return true;
+  } catch (error) {
+    console.error("Error logging invoice audit:", error);
+    return false;
+  }
+}
+
+// Get audit records for an invoice
+function getInvoiceAudit(invoiceId) {
+  try {
+    const sql = `SELECT id, invoice_id, timestamp, action, details 
+                 FROM invoice_audit 
+                 WHERE invoice_id = ? 
+                 ORDER BY timestamp DESC`;
+    const stmt = db.prepare(sql);
+    stmt.bind([invoiceId]);
+    
+    const results = [];
+    while (stmt.step()) {
+      const row = stmt.get();
+      results.push({
+        id: row[0],
+        invoiceId: row[1],
+        timestamp: row[2],
+        action: row[3],
+        details: row[4] ? JSON.parse(row[4]) : null
+      });
+    }
+    stmt.free();
+    return results;
+  } catch (error) {
+    console.error("Error getting invoice audit:", error);
+    return [];
+  }
+}
+
+// Toggle the locked status of an invoice
+function toggleInvoiceLocked(id) {
+  return withTransaction(() => {
+    // Get current locked status
+    const currentStatus = getLockedStatus(id);
+    // Toggle it (1 becomes 0, 0 becomes 1)
+    const newStatus = currentStatus ? 0 : 1;
+    
+    // If marking as locked, set the locked_at timestamp
+    // If unlocking, clear the locked_at timestamp
+    const lockedAt = newStatus ? new Date().toISOString() : null;
+    
+    const stmt = db.prepare("UPDATE invoices SET locked = ?, locked_at = ? WHERE id = ?");
+    try {
+      stmt.run([newStatus, lockedAt, id]);
+      
+      // Log the change to audit trail
+      logInvoiceAudit(id, newStatus ? "locked" : "unlocked");
+    } finally {
+      stmt.free();
+    }
+    
+    persistLocal().catch(() => {});
+    return { status: newStatus, lockedAt };
+  });
+}
+
+// Mark an invoice as sent
+function markInvoiceSent(id) {
+  return withTransaction(() => {
+    const now = new Date().toISOString();
+    
+    // Only update sent_at if it's not already set
+    const stmt = db.prepare(`
+      UPDATE invoices 
+      SET sent_at = CASE WHEN sent_at IS NULL THEN ? ELSE sent_at END 
+      WHERE id = ?
+    `);
+    
+    try {
+      stmt.run([now, id]);
+      
+      // Also log to audit trail
+      logInvoiceAudit(id, "sent", { sentAt: now });
+    } finally {
+      stmt.free();
+    }
+    
+    persistLocal().catch(() => {});
+    return now;
   });
 }
 
@@ -644,8 +849,11 @@ const methods = {
   getBusinessSettings,
   saveBusinessSettings,
   toggleInvoicePaid,
+  toggleInvoiceLocked,
+  markInvoiceSent,
   generateNextInvoiceNumber,
   isInvoiceNumberUnique,
+  getInvoiceAudit,
 };
 
 onmessage = async (e) => {

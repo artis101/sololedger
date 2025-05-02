@@ -88,6 +88,21 @@ export function toggleInvoicePaid(id) {
   return rpc("toggleInvoicePaid", id);
 }
 
+// Toggle the locked status of an invoice
+export function toggleInvoiceLocked(id) {
+  return rpc("toggleInvoiceLocked", id);
+}
+
+// Get audit history for an invoice
+export function getInvoiceAudit(id) {
+  return rpc("getInvoiceAudit", id);
+}
+
+// Mark an invoice as sent
+export function markInvoiceSent(id) {
+  return rpc("markInvoiceSent", id);
+}
+
 // Generate the next invoice number based on format settings
 export function generateNextInvoiceNumber() {
   return rpc("generateNextInvoiceNumber");
