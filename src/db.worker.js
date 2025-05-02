@@ -110,6 +110,24 @@ async function initSql() {
       unit REAL,
       FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE
   );`);
+  db.run(`CREATE TABLE IF NOT EXISTS business_settings (
+      id INTEGER PRIMARY KEY,
+      businessName TEXT,
+      tradingName TEXT,
+      businessAddress TEXT,
+      businessEmail TEXT,
+      businessPhone TEXT,
+      taxId TEXT,
+      taxRate REAL,
+      bankName TEXT,
+      accountName TEXT,
+      accountNumber TEXT,
+      swiftCode TEXT,
+      currency TEXT DEFAULT 'EUR',
+      paymentTerms TEXT,
+      invoiceNote TEXT,
+      lastUpdated TEXT
+  );`);
   runMigrations();
   return true;
 }
@@ -313,6 +331,128 @@ function getInvoiceWithItems(id) {
   return { header, items };
 }
 
+function wipeDatabase() {
+  return withTransaction(() => {
+    // Drop existing tables to completely clean the database
+    db.run("DROP TABLE IF EXISTS invoice_items");
+    db.run("DROP TABLE IF EXISTS invoices");
+    db.run("DROP TABLE IF EXISTS clients");
+    db.run("DROP TABLE IF EXISTS business_settings");
+    
+    // Recreate the schema (copied from initSql)
+    db.run("PRAGMA foreign_keys = ON;");
+    db.run(`CREATE TABLE IF NOT EXISTS clients (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        email TEXT,
+        address TEXT
+    );`);
+    db.run(`CREATE TABLE IF NOT EXISTS invoices (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        number TEXT NOT NULL,
+        date TEXT NOT NULL,
+        client_id INTEGER NOT NULL,
+        total REAL NOT NULL,
+        FOREIGN KEY (client_id) REFERENCES clients(id)
+    );`);
+    db.run(`CREATE TABLE IF NOT EXISTS invoice_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        invoice_id INTEGER NOT NULL,
+        description TEXT,
+        qty REAL,
+        unit REAL,
+        FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE
+    );`);
+    db.run(`CREATE TABLE IF NOT EXISTS business_settings (
+        id INTEGER PRIMARY KEY,
+        businessName TEXT,
+        tradingName TEXT,
+        businessAddress TEXT,
+        businessEmail TEXT,
+        businessPhone TEXT,
+        taxId TEXT,
+        taxRate REAL,
+        bankName TEXT,
+        accountName TEXT,
+        accountNumber TEXT,
+        swiftCode TEXT,
+        currency TEXT DEFAULT 'EUR',
+        paymentTerms TEXT,
+        invoiceNote TEXT,
+        lastUpdated TEXT
+    );`);
+    
+    // Reset user_version to current migration level
+    const latestMigration = migrations.reduce((max, m) => Math.max(max, m.version), 0);
+    db.run(`PRAGMA user_version = ${latestMigration}`);
+    
+    // Persist the empty database with new structure
+    persistLocal().catch(() => {});
+    
+    return true;
+  });
+}
+
+function getBusinessSettings() {
+  const res = db.exec("SELECT * FROM business_settings WHERE id = 1");
+  if (!res.length || !res[0].values.length) {
+    return null; // No business settings found
+  }
+  
+  const columns = res[0].columns;
+  const values = res[0].values[0];
+  
+  // Convert the result to an object
+  const settings = {};
+  columns.forEach((col, index) => {
+    settings[col] = values[index];
+  });
+  
+  return settings;
+}
+
+function saveBusinessSettings(settings) {
+  return withTransaction(() => {
+    // Add current timestamp for lastUpdated
+    const now = new Date().toISOString();
+    settings.lastUpdated = now;
+    
+    // Create column names and placeholders
+    const columns = Object.keys(settings).filter(k => k !== 'id');
+    const placeholders = columns.map(() => '?');
+    const values = columns.map(col => settings[col]);
+    
+    // Check if a record exists
+    const existingRecord = db.exec("SELECT COUNT(*) FROM business_settings WHERE id = 1");
+    const exists = existingRecord[0]?.values[0][0] > 0;
+    
+    if (exists) {
+      // Update existing record
+      const setClause = columns.map(col => `${col} = ?`).join(', ');
+      const stmt = db.prepare(`UPDATE business_settings SET ${setClause} WHERE id = 1`);
+      try {
+        stmt.run(values);
+      } finally {
+        stmt.free();
+      }
+    } else {
+      // Insert new record with id=1
+      const stmt = db.prepare(
+        `INSERT INTO business_settings (id, ${columns.join(', ')}) 
+         VALUES (1, ${placeholders.join(', ')})`
+      );
+      try {
+        stmt.run(values);
+      } finally {
+        stmt.free();
+      }
+    }
+    
+    persistLocal().catch(() => {});
+    return true;
+  });
+}
+
 // RPC message handler
 const methods = {
   initSql,
@@ -326,6 +466,9 @@ const methods = {
   deleteInvoice,
   saveInvoice,
   getInvoiceWithItems,
+  wipeDatabase,
+  getBusinessSettings,
+  saveBusinessSettings,
 };
 
 onmessage = async (e) => {

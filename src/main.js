@@ -4,6 +4,7 @@ import { renderClients, renderInvoices } from "./ui.js";
 import { initClientHandlers } from "./events/clients.js";
 import { initInvoiceHandlers } from "./events/invoices.js";
 import { initTabHandlers, updateDashboardStats } from "./events/tabs.js";
+import { initSettingsHandlers } from "./events/settings.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
   try {
@@ -30,4 +31,5 @@ document.addEventListener("DOMContentLoaded", async () => {
   initClientHandlers();
   initInvoiceHandlers();
   initTabHandlers();
+  initSettingsHandlers();
 });

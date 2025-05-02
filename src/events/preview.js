@@ -1,9 +1,14 @@
 import { buildPdf } from '../pdf.js';
+import { buildHtmlPdf } from '../html-pdf.js';
 import { $ } from '../ui.js';
+import { getBusinessSettings } from '../db.js';
 
 // Live preview of invoice while editing
 export async function updateInvoicePreview() {
   try {
+    // Get business settings
+    const businessSettings = await getBusinessSettings();
+    
     const form = $('#invoice-form');
     const fd = new FormData(form);
     const number = fd.get('number');
@@ -20,7 +25,7 @@ export async function updateInvoicePreview() {
     const invoiceObj = { header: { number, date, client: clientName, total }, items };
     const previewEl = $('#invoice-preview');
     if (previewEl) {
-      await buildPdf(invoiceObj, { previewEl, open: false });
+      await buildHtmlPdf(invoiceObj, { previewEl, open: false, businessSettings });
     }
   } catch (error) {
     console.error('Error updating invoice preview:', error);

@@ -11,7 +11,10 @@
     <main id="app" class="max-w-5xl mx-auto">
       <header class="flex flex-col mb-6">
         <div class="flex items-center justify-between mb-4">
-          <h1 class="text-2xl font-bold">SoloLedger</h1>
+          <div class="flex flex-col">
+            <h1 class="text-2xl font-bold">SoloLedger</h1>
+            <p id="header-business-name" class="text-sm text-gray-600"></p>
+          </div>
         </div>
         
         <!-- Tab Navigation -->
@@ -132,7 +135,207 @@
         <div class="flex items-center justify-between mb-2">
           <h2 class="text-xl font-semibold">Settings</h2>
         </div>
-        <div class="bg-white p-6 rounded-lg shadow">
+        
+        <!-- Business Settings -->
+        <div class="bg-white p-6 rounded-lg shadow mb-6">
+          <h3 class="font-medium mb-4">Business Settings</h3>
+          
+          <form id="business-settings-form" class="space-y-6">
+            <!-- Business Identity -->
+            <div>
+              <h4 class="text-sm font-medium mb-3 pb-1 border-b">Business Identity</h4>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium mb-1">Legal Business Name</label>
+                  <input 
+                    type="text" 
+                    id="business-name" 
+                    name="businessName" 
+                    class="w-full border border-gray-300 rounded p-2"
+                    placeholder="Your official business name"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-1">Trading Name (Optional)</label>
+                  <input 
+                    type="text" 
+                    id="trading-name" 
+                    name="tradingName" 
+                    class="w-full border border-gray-300 rounded p-2"
+                    placeholder="Name you operate under if different"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <!-- Contact Information -->
+            <div>
+              <h4 class="text-sm font-medium mb-3 pb-1 border-b">Contact Information</h4>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium mb-1">Business Address</label>
+                  <textarea 
+                    id="business-address" 
+                    name="businessAddress" 
+                    rows="3" 
+                    class="w-full border border-gray-300 rounded p-2"
+                    placeholder="Your complete business address"
+                  ></textarea>
+                </div>
+                <div class="space-y-4">
+                  <div>
+                    <label class="block text-sm font-medium mb-1">Email</label>
+                    <input 
+                      type="email" 
+                      id="business-email" 
+                      name="businessEmail" 
+                      class="w-full border border-gray-300 rounded p-2"
+                      placeholder="contact@yourbusiness.com"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium mb-1">Phone</label>
+                    <input 
+                      type="tel" 
+                      id="business-phone" 
+                      name="businessPhone" 
+                      class="w-full border border-gray-300 rounded p-2"
+                      placeholder="+1 (555) 555-5555"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Tax Information -->
+            <div>
+              <h4 class="text-sm font-medium mb-3 pb-1 border-b">Tax Information</h4>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium mb-1">Tax ID / VAT Number</label>
+                  <input 
+                    type="text" 
+                    id="tax-id" 
+                    name="taxId" 
+                    class="w-full border border-gray-300 rounded p-2"
+                    placeholder="Tax identification number"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-1">Default Tax Rate (%)</label>
+                  <input 
+                    type="number" 
+                    id="tax-rate" 
+                    name="taxRate" 
+                    class="w-full border border-gray-300 rounded p-2"
+                    placeholder="e.g., 20 for 20%"
+                    min="0"
+                    max="100"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <!-- Banking Information -->
+            <div>
+              <h4 class="text-sm font-medium mb-3 pb-1 border-b">Banking Information</h4>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium mb-1">Bank Name</label>
+                  <input 
+                    type="text" 
+                    id="bank-name" 
+                    name="bankName" 
+                    class="w-full border border-gray-300 rounded p-2"
+                    placeholder="Your bank's name"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-1">Account Name</label>
+                  <input 
+                    type="text" 
+                    id="account-name" 
+                    name="accountName" 
+                    class="w-full border border-gray-300 rounded p-2"
+                    placeholder="Name on your account"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-1">IBAN / Account Number</label>
+                  <input 
+                    type="text" 
+                    id="account-number" 
+                    name="accountNumber" 
+                    class="w-full border border-gray-300 rounded p-2"
+                    placeholder="Your IBAN or account number"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-1">SWIFT / BIC Code</label>
+                  <input 
+                    type="text" 
+                    id="swift-code" 
+                    name="swiftCode" 
+                    class="w-full border border-gray-300 rounded p-2"
+                    placeholder="Bank SWIFT or BIC code"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <!-- Invoice Settings -->
+            <div>
+              <h4 class="text-sm font-medium mb-3 pb-1 border-b">Invoice Settings</h4>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium mb-1">Currency</label>
+                  <select 
+                    id="currency" 
+                    name="currency" 
+                    class="w-full border border-gray-300 rounded p-2"
+                  >
+                    <option value="EUR">EUR - Euro</option>
+                    <option value="USD">USD - US Dollar</option>
+                    <option value="GBP">GBP - British Pound</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-1">Default Payment Terms</label>
+                  <input 
+                    type="text" 
+                    id="payment-terms" 
+                    name="paymentTerms" 
+                    class="w-full border border-gray-300 rounded p-2"
+                    placeholder="e.g., Net 30, Due on receipt"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-1">Invoice Note</label>
+                  <textarea 
+                    id="invoice-note" 
+                    name="invoiceNote" 
+                    rows="2" 
+                    class="w-full border border-gray-300 rounded p-2"
+                    placeholder="Default note to appear on invoices"
+                  ></textarea>
+                </div>
+              </div>
+            </div>
+            
+            <div class="pt-4">
+              <button 
+                type="submit" 
+                id="save-settings-btn" 
+                class="px-4 py-2 rounded bg-blue-600 text-white shadow hover:bg-blue-700"
+              >
+                Save Settings
+              </button>
+            </div>
+          </form>
+        </div>
+        
+        <!-- App Settings -->
+        <div class="bg-white p-6 rounded-lg shadow mb-6">
           <h3 class="font-medium mb-4">App Settings</h3>
           
           <div class="grid grid-cols-1 gap-4">
@@ -155,45 +358,121 @@
             </div>
           </div>
         </div>
+        
+        <!-- Danger Zone -->
+        <div class="bg-white p-6 rounded-lg shadow border-2 border-red-200">
+          <h3 class="font-medium mb-4 text-red-600">Danger Zone</h3>
+          
+          <div class="space-y-4">
+            <div class="p-4 bg-red-50 rounded-md">
+              <h4 class="text-sm font-medium mb-1 text-red-700">Wipe Database</h4>
+              <p class="text-sm text-gray-600 mb-3">
+                This will permanently delete all clients, invoices, and other data. This action cannot be undone.
+              </p>
+              <button id="wipe-db-btn" class="px-3 py-1 text-sm rounded bg-red-600 text-white shadow hover:bg-red-700">
+                Wipe Database
+              </button>
+            </div>
+          </div>
+        </div>
       </section>
+      
+      <!-- Database Wipe Confirmation Modal -->
+      <div
+        id="wipe-confirm-modal"
+        class="fixed inset-0 bg-black/50 flex items-center justify-center hidden z-50 p-4 md:p-6"
+      >
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-xl flex flex-col">
+          <div class="p-6 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-red-600">Danger: Wipe Database</h3>
+          </div>
+          
+          <div class="p-6 overflow-y-auto">
+            <div class="space-y-4">
+              <p class="text-gray-700">
+                You are about to delete <strong>all</strong> your data including clients, invoices, and settings.
+                This action <strong>cannot be undone</strong>.
+              </p>
+              <div class="bg-yellow-50 p-4 rounded border border-yellow-200">
+                <p class="text-sm">
+                  To confirm, please type <strong>"WIPE"</strong> in the field below:
+                </p>
+              </div>
+              <input 
+                type="text" 
+                id="wipe-confirm-input" 
+                class="w-full p-3 border border-gray-300 rounded"
+                placeholder="Type WIPE to confirm"
+              />
+            </div>
+          </div>
+          
+          <div class="p-6 border-t border-gray-200">
+            <div class="flex flex-wrap justify-end gap-3">
+              <button
+                type="button"
+                id="cancel-wipe"
+                class="px-4 py-2 rounded border border-gray-300"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                id="confirm-wipe-btn"
+                class="px-4 py-2 rounded bg-red-600 text-white shadow opacity-50 cursor-not-allowed"
+                disabled
+              >
+                Permanently Delete All Data
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- MODALS ===================================================== -->
       <!-- CLIENT MODAL -->
       <div
         id="client-modal"
-        class="fixed inset-0 bg-black/40 flex items-center justify-center hidden"
+        class="fixed inset-0 bg-black/40 flex items-center justify-center hidden z-50 p-4 md:p-6"
       >
-        <div class="bg-white p-6 rounded-xl shadow-xl w-full max-w-lg">
-          <h3 class="text-lg font-semibold mb-4" id="client-modal-title">
-            New Client
-          </h3>
-          <form id="client-form" class="space-y-4">
-            <input type="hidden" name="clientId" id="edit-client-id" value="" />
-            <div>
-              <label class="block text-sm font-medium">Name</label>
-              <input
-                name="name"
-                required
-                class="mt-1 w-full border border-gray-300 rounded p-2"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium">Email</label>
-              <input
-                name="email"
-                type="email"
-                class="mt-1 w-full border border-gray-300 rounded p-2"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium">Address</label>
-              <textarea
-                name="address"
-                rows="2"
-                class="mt-1 w-full border border-gray-300 rounded p-2"
-              ></textarea>
-            </div>
-            <div class="flex justify-between gap-3 pt-4 border-t">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+          <div class="p-6 border-b border-gray-200">
+            <h3 class="text-lg font-semibold" id="client-modal-title">
+              New Client
+            </h3>
+          </div>
+          <div class="p-6 overflow-y-auto flex-1">
+            <form id="client-form" class="space-y-4">
+              <input type="hidden" name="clientId" id="edit-client-id" value="" />
+              <div>
+                <label class="block text-sm font-medium">Name</label>
+                <input
+                  name="name"
+                  required
+                  class="mt-1 w-full border border-gray-300 rounded p-2"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium">Email</label>
+                <input
+                  name="email"
+                  type="email"
+                  class="mt-1 w-full border border-gray-300 rounded p-2"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium">Address</label>
+                <textarea
+                  name="address"
+                  rows="4"
+                  class="mt-1 w-full border border-gray-300 rounded p-2"
+                ></textarea>
+              </div>
+            </form>
+          </div>
+          
+          <div class="p-6 border-t border-gray-200">
+            <div class="flex flex-wrap justify-between items-center gap-3">
               <button
                 type="button"
                 id="delete-client-btn"
@@ -201,7 +480,7 @@
               >
                 Delete
               </button>
-              <div class="flex justify-end gap-3">
+              <div class="flex flex-wrap gap-3 ml-auto">
                 <button
                   type="button"
                   id="cancel-client"
@@ -211,29 +490,33 @@
                 </button>
                 <button
                   type="submit"
+                  form="client-form"
                   class="px-4 py-2 rounded bg-blue-600 text-white shadow"
                 >
                   Save
                 </button>
               </div>
             </div>
-          </form>
+          </div>
         </div>
       </div>
 
       <!-- INVOICE MODAL -->
       <div
         id="invoice-modal"
-        class="fixed inset-0 bg-black/40 flex items-center justify-center hidden"
+        class="fixed inset-0 bg-black/40 flex items-center justify-center hidden z-50 p-4 md:p-6"
       >
-        <div class="bg-white p-6 rounded-xl shadow-xl w-full max-w-3xl">
-          <h3 class="text-lg font-semibold mb-4" id="invoice-modal-title">
-            New Invoice
-          </h3>
-          <form
-            id="invoice-form"
-            class="space-y-4 max-h-[70vh] overflow-y-auto"
-          >
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col">
+          <div class="p-6 border-b border-gray-200">
+            <h3 class="text-lg font-semibold" id="invoice-modal-title">
+              New Invoice
+            </h3>
+          </div>
+          <div class="p-6 overflow-y-auto flex-1">
+            <form
+              id="invoice-form"
+              class="space-y-4"
+            >
             <input
               type="hidden"
               name="invoiceId"
@@ -295,41 +578,51 @@
               </button>
             </div>
 
-            <div class="flex justify-between gap-3 pt-4 border-t">
-              <button
-                type="button"
-                id="delete-invoice-btn"
-                class="px-4 py-2 rounded bg-red-600 text-white shadow hidden"
-              >
-                Delete
-              </button>
-              <div class="flex justify-end gap-3">
+            </form>
+          </div>
+          
+          <!-- Preview Section -->
+          <div class="p-6 border-t border-gray-200 flex flex-col md:flex-row gap-4">
+            <div class="w-full md:w-1/2">
+              <h3 class="text-lg font-semibold mb-2">Preview</h3>
+              <iframe id="invoice-preview" class="w-full h-96 border rounded"></iframe>
+            </div>
+            
+            <div class="w-full md:w-1/2 flex flex-col justify-end">
+              <div class="flex flex-wrap justify-between items-center gap-3 pt-4">
                 <button
                   type="button"
-                  id="cancel-invoice"
-                  class="px-4 py-2 rounded border border-gray-300"
+                  id="delete-invoice-btn"
+                  class="px-4 py-2 rounded bg-red-600 text-white shadow hidden"
                 >
-                  Cancel
+                  Delete
                 </button>
-                <button
-                  type="button"
-                  id="save-invoice-btn"
-                  class="px-4 py-2 rounded bg-blue-600 text-white shadow"
-                >
-                  Save
-                </button>
-                <button
-                  type="submit"
-                  class="px-4 py-2 rounded bg-green-600 text-white shadow"
-                >
-                  Save & PDF
-                </button>
+                <div class="flex flex-wrap gap-3 ml-auto">
+                  <button
+                    type="button"
+                    id="cancel-invoice"
+                    class="px-4 py-2 rounded border border-gray-300"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    id="save-invoice-btn"
+                    class="px-4 py-2 rounded bg-blue-600 text-white shadow"
+                  >
+                    Save
+                  </button>
+                  <button
+                    type="submit"
+                    form="invoice-form"
+                    class="px-4 py-2 rounded bg-green-600 text-white shadow"
+                  >
+                    Save & PDF
+                  </button>
+                </div>
               </div>
             </div>
-          </form>
-          <!-- <hr class="my-4" />
-          <h3 class="text-lg font-semibold mb-2">Preview</h3>
-          <iframe id="invoice-preview" class="w-full h-64 border"></iframe> -->
+          </div>
         </div>
       </div>
     </main>

@@ -67,6 +67,25 @@ export function getInvoiceWithItems(id) {
   return rpc("getInvoiceWithItems", id);
 }
 
+export function wipeDatabase() {
+  return rpc("wipeDatabase");
+}
+
+export function importDb(data) {
+  return rpc("loadDb", data);
+}
+
+export function getBusinessSettings() {
+  return rpc("getBusinessSettings");
+}
+
+export function saveBusinessSettings(settings) {
+  return rpc("saveBusinessSettings", settings);
+}
+
+// Make importDb available globally for the import function
+window.importDb = importDb;
+
 // Debounce utility to limit function calls
 function debounce(fn, ms) {
   let timeout = null;

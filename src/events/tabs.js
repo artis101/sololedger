@@ -1,4 +1,15 @@
 import { $, $$ } from '../ui.js';
+import { getBusinessSettings } from '../db.js';
+
+// Helper function to get currency symbol from currency code
+function getCurrencySymbol(currencyCode) {
+  switch (currencyCode) {
+    case 'USD': return '$';
+    case 'EUR': return '€';
+    case 'GBP': return '£';
+    default: return currencyCode;
+  }
+}
 
 // Initialize tab navigation functionality
 export function initTabHandlers() {
@@ -37,25 +48,61 @@ export function initTabHandlers() {
 
 // Update dashboard stats with real data
 export async function updateDashboardStats(clients, invoices) {
-  // Update client count
-  const clientCount = $('#client-count');
-  if (clientCount) {
-    clientCount.textContent = clients.length;
-  }
-  
-  // Update invoice count and total revenue
-  const invoiceCount = $('#invoice-count');
-  const totalRevenue = $('#total-revenue');
-  if (invoiceCount && totalRevenue && invoices.length) {
-    invoiceCount.textContent = invoices.length;
+  // Get business settings
+  try {
+    const settings = await getBusinessSettings();
     
-    // Calculate total revenue
-    const total = invoices.reduce((sum, invoice) => {
-      // Invoices are stored as arrays where total is at index 4
-      return sum + invoice[4];
-    }, 0);
+    // Update header business name
+    const headerBusinessName = $('#header-business-name');
+    if (headerBusinessName && settings && settings.businessName) {
+      headerBusinessName.textContent = settings.businessName;
+    }
     
-    totalRevenue.textContent = `€${total.toFixed(2)}`;
+    // Update currency display based on settings
+    const currencySymbol = settings && settings.currency ? 
+      getCurrencySymbol(settings.currency) : 
+      '€';
+    
+    // Update client count
+    const clientCount = $('#client-count');
+    if (clientCount) {
+      clientCount.textContent = clients.length;
+    }
+    
+    // Update invoice count and total revenue
+    const invoiceCount = $('#invoice-count');
+    const totalRevenue = $('#total-revenue');
+    if (invoiceCount && totalRevenue) {
+      invoiceCount.textContent = invoices.length;
+      
+      // Calculate total revenue
+      const total = invoices.reduce((sum, invoice) => {
+        // Invoices are stored as arrays where total is at index 4
+        return sum + invoice[4];
+      }, 0);
+      
+      totalRevenue.textContent = `${currencySymbol}${total.toFixed(2)}`;
+    }
+  } catch (error) {
+    console.error("Error loading business settings for dashboard:", error);
+    
+    // Default values if settings can't be loaded
+    const clientCount = $('#client-count');
+    if (clientCount) {
+      clientCount.textContent = clients.length;
+    }
+    
+    const invoiceCount = $('#invoice-count');
+    const totalRevenue = $('#total-revenue');
+    if (invoiceCount && totalRevenue) {
+      invoiceCount.textContent = invoices.length;
+      
+      const total = invoices.reduce((sum, invoice) => {
+        return sum + invoice[4];
+      }, 0);
+      
+      totalRevenue.textContent = `€${total.toFixed(2)}`;
+    }
   }
   
   // Update recent invoices table

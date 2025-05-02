@@ -1,6 +1,7 @@
-import { saveInvoice, getInvoiceWithItems, deleteInvoice, listClients, listInvoices } from '../db.js';
+import { saveInvoice, getInvoiceWithItems, deleteInvoice, listClients, listInvoices, getBusinessSettings } from '../db.js';
 import { renderInvoices, toggle, $, addItemRow } from '../ui.js';
 import { buildPdf } from '../pdf.js';
+import { buildHtmlPdf } from '../html-pdf.js';
 import { updateInvoicePreview } from './preview.js';
 import { updateDashboardStats } from './tabs.js';
 
@@ -45,8 +46,11 @@ export function initInvoiceHandlers() {
       const id = Number(e.target.dataset.id);
       const invoice = await getInvoiceWithItems(id);
       if (invoice) {
-        // Generate and open PDF
-        buildPdf(invoice);
+        // Get business settings to include in the PDF
+        const businessSettings = await getBusinessSettings();
+        
+        // Generate and open PDF using HTML renderer
+        buildHtmlPdf(invoice, { businessSettings });
       }
     } else if (e.target.matches('.edit-invoice')) {
       const id = Number(e.target.dataset.id);
@@ -151,8 +155,11 @@ export function initInvoiceHandlers() {
       await renderInvoices();
       await updateDashboardStats(clients, invoices);
       
+      // Get business settings to include in the PDF
+      const businessSettings = await getBusinessSettings();
+      
       const full = await getInvoiceWithItems(saved);
-      buildPdf(full);
+      buildHtmlPdf(full, { businessSettings });
       toggle($('#invoice-modal'), false);
       form.reset(); $('#items-table tbody').innerHTML = '';
     } catch (error) {

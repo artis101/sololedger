@@ -1,7 +1,17 @@
-import { listClients, listInvoices } from "./db.js";
+import { listClients, listInvoices, getBusinessSettings } from "./db.js";
 
 export const $ = (sel) => document.querySelector(sel);
 export const $$ = (sel) => document.querySelectorAll(sel);
+
+// Helper function to get currency symbol
+export function getCurrencySymbol(currencyCode) {
+  switch (currencyCode) {
+    case 'USD': return '$';
+    case 'EUR': return '€';
+    case 'GBP': return '£';
+    default: return currencyCode;
+  }
+}
 
 export function toggle(el, show) {
   el.classList[show ? "remove" : "add"]("hidden");
@@ -44,10 +54,22 @@ export async function renderClients() {
 }
 
 export async function renderInvoices() {
+  // Get business settings for currency
+  let currencySymbol = '€'; // Default
+  try {
+    const businessSettings = await getBusinessSettings();
+    if (businessSettings?.currency) {
+      currencySymbol = getCurrencySymbol(businessSettings.currency);
+    }
+  } catch (error) {
+    console.error("Error getting currency from business settings:", error);
+  }
+  
   const invoices = await listInvoices();
   const tbody = $("#invoice-rows");
   tbody.innerHTML = "";
   const fragment = document.createDocumentFragment();
+  
   for (const row of invoices) {
     const tr = document.createElement("tr");
     tr.className = "odd:bg-gray-50";
@@ -55,7 +77,7 @@ export async function renderInvoices() {
       <td class="px-3 py-2">${row[1]}</td>
       <td class="px-3 py-2">${row[2]}</td>
       <td class="px-3 py-2">${row[3]}</td>
-      <td class="px-3 py-2 text-right">${row[4].toFixed(2)}</td>
+      <td class="px-3 py-2 text-right">${currencySymbol}${row[4].toFixed(2)}</td>
       <td class="px-3 py-2 text-center"><button data-id="${
         row[0]
       }" class="text-blue-600 hover:underline view-pdf">PDF</button></td>
@@ -70,6 +92,12 @@ export async function renderInvoices() {
     fragment.appendChild(tr);
   }
   tbody.appendChild(fragment);
+  
+  // Also update invoice table header to show currency
+  const invoiceTableHeader = $("#invoice-table thead tr th:nth-child(4)");
+  if (invoiceTableHeader) {
+    invoiceTableHeader.textContent = `Total (${currencySymbol})`;
+  }
 }
 
 export function addItemRow(desc = "", qty = "", unit = "") {
