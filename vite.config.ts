@@ -1,7 +1,8 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  base: './',
+  // Use absolute paths for production assets (e.g. /assets/...) instead of relative paths
+  base: '/',
   build: {
     outDir: 'dist',
     rollupOptions: {
