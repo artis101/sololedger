@@ -1,6 +1,7 @@
 import { $, $$ } from '../ui';
 import { getBusinessSettings } from '../db';
 import { BusinessSettings } from '../types';
+import { router } from '../router';
 
 // Helper function to get currency symbol from currency code
 function getCurrencySymbol(currencyCode: string): string {
@@ -14,37 +15,13 @@ function getCurrencySymbol(currencyCode: string): string {
 
 // Initialize tab navigation functionality
 export function initTabHandlers(): void {
-  const tabButtons = $$('.tab-button');
-  const tabContents = $$('.tab-content');
-  const viewAllInvoicesLink = $('#view-all-invoices');
-
-  // Switch tab when clicked
-  tabButtons.forEach(button => {
-    button.addEventListener('click', () => {
-      const tabId = button.id;
-      const targetId = tabId.replace('-tab', '-page');
-      const targetContent = $('#' + targetId);
-
-      // Update active tab button
-      tabButtons.forEach(btn => btn.classList.remove('tab-active'));
-      button.classList.add('tab-active');
-
-      // Show selected tab content, hide others
-      tabContents.forEach(content => content.classList.add('hidden'));
-      if (targetContent) {
-        targetContent.classList.remove('hidden');
-      }
-    });
-  });
-
-  // View All Invoices link
-  if (viewAllInvoicesLink) {
-    viewAllInvoicesLink.addEventListener('click', (e: Event) => {
-      e.preventDefault();
-      // Activate invoices tab
-      ($('#invoices-tab') as HTMLElement).click();
-    });
-  }
+  // The router now handles tab switching, so this function primarily
+  // initializes the router and sets up any additional tab-related functionality
+  
+  // Initialize the router
+  router();
+  
+  // Any additional tab functionality not handled by the router can go here
 }
 
 // Update dashboard stats with real data

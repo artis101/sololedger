@@ -47,6 +47,47 @@ export function initInvoiceHandlers(): void {
 
   // New Invoice
   $('#new-invoice-btn').onclick = async () => {
+    // Check if business settings are completed
+    const businessSettings = await getBusinessSettings();
+    const businessSettingsComplete = !!(
+      businessSettings &&
+      businessSettings.businessName && 
+      businessSettings.businessName.trim() !== '' &&
+      businessSettings.paymentTerms && 
+      businessSettings.paymentTerms.trim() !== ''
+    );
+    
+    if (!businessSettingsComplete) {
+      // Show validation error
+      alert('Please complete your business details in Settings before creating invoices. At minimum, you must provide your business name and payment terms.');
+      
+      // Optionally navigate to settings
+      if (confirm('Would you like to go to Settings now?')) {
+        import('../router').then(({ router }) => {
+          const routerInstance = router();
+          routerInstance.navigateToSettings();
+        });
+      }
+      return;
+    }
+    
+    // Check if at least one client exists
+    const clients = await listClients();
+    if (!clients || clients.length === 0) {
+      // Show validation error
+      alert('Please add at least one client before creating invoices.');
+      
+      // Optionally navigate to clients
+      if (confirm('Would you like to go to Clients now?')) {
+        import('../router').then(({ router }) => {
+          const routerInstance = router();
+          routerInstance.navigateToClients();
+        });
+      }
+      return;
+    }
+    
+    // Proceed with invoice creation
     $('#invoice-modal-title').textContent = 'New Invoice';
     $('#edit-invoice-id').value = '';
     $('#invoice-form').reset();

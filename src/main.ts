@@ -5,6 +5,8 @@ import { initClientHandlers } from "./events/clients";
 import { initInvoiceHandlers } from "./events/invoices";
 import { initTabHandlers, updateDashboardStats } from "./events/tabs";
 import { initSettingsHandlers } from "./events/settings";
+import { initOnboarding } from "./events/onboarding";
+import { router } from "./router";
 
 document.addEventListener("DOMContentLoaded", async () => {
   try {
@@ -32,4 +34,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   initInvoiceHandlers();
   initTabHandlers();
   initSettingsHandlers();
+  
+  // Initialize the router
+  router();
+  
+  // Initialize onboarding flow
+  setTimeout(() => {
+    initOnboarding();
+  }, 1000); // Delay a bit to ensure UI is fully loaded
 });

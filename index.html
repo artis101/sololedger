@@ -10,7 +10,7 @@
   <body class="bg-gray-50 p-4">
     <main id="app" class="max-w-5xl mx-auto">
       <header class="flex flex-col mb-6">
-        <div class="flex items-center justify-between mb-4">
+        <div class="header-container mb-4">
           <div class="flex flex-col">
             <div class="flex items-center gap-2">
               <h1 class="text-2xl font-bold">SoloLedger</h1>
@@ -23,14 +23,15 @@
             </div>
             <p id="header-business-name" class="text-sm text-gray-600"></p>
           </div>
+          <!-- Help/Onboarding button will be added here dynamically -->
         </div>
         
         <!-- Tab Navigation -->
         <nav class="flex border-b border-gray-300">
-          <button id="dashboard-tab" class="tab-button tab-active px-4 py-2 font-medium">Dashboard</button>
-          <button id="clients-tab" class="tab-button px-4 py-2 font-medium">Clients</button>
-          <button id="invoices-tab" class="tab-button px-4 py-2 font-medium">Invoices</button>
-          <button id="settings-tab" class="tab-button px-4 py-2 font-medium">Settings</button>
+          <a href="/" id="dashboard-tab" class="tab-button tab-active px-4 py-2 font-medium">Dashboard</a>
+          <a href="/clients" id="clients-tab" class="tab-button px-4 py-2 font-medium">Clients</a>
+          <a href="/invoices" id="invoices-tab" class="tab-button px-4 py-2 font-medium">Invoices</a>
+          <a href="/settings" id="settings-tab" class="tab-button px-4 py-2 font-medium">Settings</a>
         </nav>
       </header>
 
@@ -65,7 +66,7 @@
           <div class="bg-white p-4 rounded-lg shadow">
             <div class="flex items-center justify-between mb-2">
               <h3 class="font-medium">Recent Invoices</h3>
-              <a href="#" id="view-all-invoices" class="text-blue-600 text-sm">View All</a>
+              <a href="/invoices" id="view-all-invoices" class="text-blue-600 text-sm">View All</a>
             </div>
             <table class="min-w-full">
               <thead class="bg-gray-100 text-left text-sm">
