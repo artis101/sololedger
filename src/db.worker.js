@@ -67,6 +67,18 @@ const migrations = [
       db.run("ALTER TABLE invoices ADD COLUMN paid INTEGER DEFAULT 0");
     },
   },
+  {
+    version: 3,
+    up: (db) => {
+      // Add invoice numbering fields to business settings
+      db.run("ALTER TABLE business_settings ADD COLUMN invoice_number_format TEXT DEFAULT 'INV-{YEAR}-{SEQ}'");
+      db.run("ALTER TABLE business_settings ADD COLUMN invoice_number_counter INTEGER DEFAULT 1");
+      db.run("ALTER TABLE business_settings ADD COLUMN invoice_number_padding INTEGER DEFAULT 4");
+      db.run("ALTER TABLE business_settings ADD COLUMN invoice_number_prefix TEXT DEFAULT ''");
+      db.run("ALTER TABLE business_settings ADD COLUMN invoice_number_reset TEXT DEFAULT 'yearly'");
+      db.run("ALTER TABLE business_settings ADD COLUMN invoice_number_last_reset TEXT");
+    },
+  },
 ];
 
 function runMigrations() {
@@ -134,7 +146,13 @@ async function initSql() {
       currency TEXT DEFAULT 'EUR',
       paymentTerms TEXT,
       invoiceNote TEXT,
-      lastUpdated TEXT
+      lastUpdated TEXT,
+      invoice_number_format TEXT DEFAULT 'INV-{YEAR}-{SEQ}',
+      invoice_number_counter INTEGER DEFAULT 1,
+      invoice_number_padding INTEGER DEFAULT 4,
+      invoice_number_prefix TEXT DEFAULT '',
+      invoice_number_reset TEXT DEFAULT 'yearly',
+      invoice_number_last_reset TEXT
   );`);
   runMigrations();
   return true;
@@ -394,7 +412,13 @@ function wipeDatabase() {
         currency TEXT DEFAULT 'EUR',
         paymentTerms TEXT,
         invoiceNote TEXT,
-        lastUpdated TEXT
+        lastUpdated TEXT,
+        invoice_number_format TEXT DEFAULT 'INV-{YEAR}-{SEQ}',
+        invoice_number_counter INTEGER DEFAULT 1,
+        invoice_number_padding INTEGER DEFAULT 4,
+        invoice_number_prefix TEXT DEFAULT '',
+        invoice_number_reset TEXT DEFAULT 'yearly',
+        invoice_number_last_reset TEXT
     );`);
     
     // Reset user_version to current migration level
@@ -440,6 +464,106 @@ function toggleInvoicePaid(id) {
     
     persistLocal().catch(() => {});
     return newStatus;
+  });
+}
+
+// Check if an invoice number is already in use
+function isInvoiceNumberUnique(number, excludeId = null) {
+  try {
+    let sql = "SELECT COUNT(*) FROM invoices WHERE number = ?";
+    const params = [number];
+    
+    // If excluding a specific invoice ID (for updates)
+    if (excludeId) {
+      sql += " AND id != ?";
+      params.push(excludeId);
+    }
+    
+    const stmt = db.prepare(sql);
+    stmt.bind(params);
+    stmt.step();
+    const count = stmt.get()[0];
+    stmt.free();
+    
+    return count === 0; // Return true if unique (count is 0)
+  } catch (error) {
+    console.error("Error checking invoice number uniqueness:", error);
+    return false; // Assume not unique on error (safer)
+  }
+}
+
+// Parse invoice number format and generate the next invoice number
+function generateNextInvoiceNumber() {
+  return withTransaction(() => {
+    // Get business settings for invoice numbering
+    const settings = getBusinessSettings();
+    if (!settings) {
+      return "INV-0001"; // Default if no settings exist
+    }
+    
+    // Extract numbering settings
+    const format = settings.invoice_number_format || 'INV-{YEAR}-{SEQ}';
+    const prefix = settings.invoice_number_prefix || '';
+    const padding = settings.invoice_number_padding || 4;
+    let counter = settings.invoice_number_counter || 1;
+    const resetOption = settings.invoice_number_reset || 'yearly';
+    let lastReset = settings.invoice_number_last_reset;
+    
+    // Check if counter needs to be reset
+    const now = new Date();
+    const currentDateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
+    
+    // Only reset if we have a last reset date
+    if (lastReset) {
+      const lastResetDate = new Date(lastReset);
+      
+      if (resetOption === 'yearly') {
+        // Reset if the year has changed
+        if (lastResetDate.getFullYear() < now.getFullYear()) {
+          counter = 1;
+          lastReset = currentDateStr;
+        }
+      } else if (resetOption === 'monthly') {
+        // Reset if the month or year has changed
+        if (lastResetDate.getFullYear() < now.getFullYear() || 
+            (lastResetDate.getFullYear() === now.getFullYear() && 
+             lastResetDate.getMonth() < now.getMonth())) {
+          counter = 1;
+          lastReset = currentDateStr;
+        }
+      }
+      // If 'never', we don't reset the counter
+    } else {
+      // No last reset date, set it now
+      lastReset = currentDateStr;
+    }
+    
+    // Format the variables
+    const year = now.getFullYear().toString();
+    const shortYear = year.slice(2); // Last two digits
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const paddedCounter = counter.toString().padStart(padding, '0');
+    
+    // Parse the format string
+    let nextNumber = format
+      .replace('{YEAR}', year)
+      .replace('{YY}', shortYear)
+      .replace('{MONTH}', month)
+      .replace('{SEQ}', paddedCounter)
+      .replace('{PREFIX}', prefix);
+    
+    // Update the counter for next time
+    const stmt = db.prepare(
+      "UPDATE business_settings SET invoice_number_counter = ?, invoice_number_last_reset = ? WHERE id = 1"
+    );
+    try {
+      stmt.run([counter + 1, lastReset]);
+    } finally {
+      stmt.free();
+    }
+    
+    persistLocal().catch(() => {});
+    return nextNumber;
   });
 }
 
@@ -520,6 +644,8 @@ const methods = {
   getBusinessSettings,
   saveBusinessSettings,
   toggleInvoicePaid,
+  generateNextInvoiceNumber,
+  isInvoiceNumberUnique,
 };
 
 onmessage = async (e) => {

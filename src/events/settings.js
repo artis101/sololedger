@@ -1,5 +1,5 @@
 import { $, toggle } from '../ui.js';
-import { wipeDatabase, listClients, listInvoices, getBusinessSettings, saveBusinessSettings } from '../db.js';
+import { wipeDatabase, listClients, listInvoices, getBusinessSettings, saveBusinessSettings, generateNextInvoiceNumber } from '../db.js';
 import { renderClients, renderInvoices } from '../ui.js';
 import { updateDashboardStats } from './tabs.js';
 import { exportDatabase, importDatabase, createFileInput } from '../export-import.js';
@@ -19,7 +19,12 @@ const businessSettingsFields = [
   "swiftCode",
   "currency",
   "paymentTerms",
-  "invoiceNote"
+  "invoiceNote",
+  "invoice_number_format",
+  "invoice_number_counter",
+  "invoice_number_padding",
+  "invoice_number_prefix",
+  "invoice_number_reset"
 ];
 
 // Initialize settings-related event handlers
@@ -37,6 +42,9 @@ export function initSettingsHandlers() {
   // Handle business settings form submission
   if (businessSettingsForm) {
     businessSettingsForm.addEventListener('submit', handleSaveSettings);
+    
+    // Add live preview for invoice number format
+    setupInvoiceNumberPreview();
   }
   
   // Show wipe confirmation modal
@@ -296,6 +304,67 @@ async function handleSaveSettings(event) {
 }
 
 // Show notification message
+// Set up the live preview for invoice number format
+function setupInvoiceNumberPreview() {
+  // Get all the invoice number related fields
+  const formatField = $('#invoice-number-format');
+  const prefixField = $('#invoice-number-prefix');
+  const paddingField = $('#invoice-number-padding');
+  const counterField = $('#invoice-number-counter');
+  const resetField = $('#invoice-number-reset');
+  const previewEl = $('#invoice-number-preview');
+  
+  // Function to update the preview
+  const updatePreview = async () => {
+    try {
+      // Generate a preview based on current form values
+      // This is a client-side preview that simulates what the server would do
+      const now = new Date();
+      const year = now.getFullYear().toString();
+      const shortYear = year.slice(2);
+      const month = (now.getMonth() + 1).toString().padStart(2, '0');
+      
+      const format = formatField.value || 'INV-{YEAR}-{SEQ}';
+      const prefix = prefixField.value || '';
+      const padding = parseInt(paddingField.value) || 4;
+      let counter = parseInt(counterField.value) || 1;
+      
+      // Format the counter with padding
+      const paddedCounter = counter.toString().padStart(padding, '0');
+      
+      // Parse the format string
+      let previewNumber = format
+        .replace('{YEAR}', year)
+        .replace('{YY}', shortYear)
+        .replace('{MONTH}', month)
+        .replace('{SEQ}', paddedCounter)
+        .replace('{PREFIX}', prefix);
+      
+      // Update the preview element
+      if (previewEl) {
+        previewEl.textContent = previewNumber;
+      }
+    } catch (error) {
+      console.error("Error updating invoice number preview:", error);
+      if (previewEl) {
+        previewEl.textContent = "Error generating preview";
+      }
+    }
+  };
+  
+  // Update preview on any change to the invoice numbering fields
+  [formatField, prefixField, paddingField, counterField, resetField].forEach(field => {
+    if (field) {
+      ['input', 'change'].forEach(event => {
+        field.addEventListener(event, updatePreview);
+      });
+    }
+  });
+  
+  // Initial preview update
+  updatePreview();
+}
+
 function showNotification(message, type = "success") {
   // Check if notification container exists, if not create it
   let notificationContainer = $('#notification-container');

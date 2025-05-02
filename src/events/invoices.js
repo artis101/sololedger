@@ -1,4 +1,4 @@
-import { saveInvoice, getInvoiceWithItems, deleteInvoice, listClients, listInvoices, getBusinessSettings, toggleInvoicePaid } from '../db.js';
+import { saveInvoice, getInvoiceWithItems, deleteInvoice, listClients, listInvoices, getBusinessSettings, toggleInvoicePaid, generateNextInvoiceNumber, isInvoiceNumberUnique } from '../db.js';
 import { renderInvoices, toggle, $, addItemRow } from '../ui.js';
 import { buildPdf } from '../pdf.js';
 import { buildHtmlPdf } from '../html-pdf.js';
@@ -8,7 +8,7 @@ import { updateDashboardStats } from './tabs.js';
 // Initialize invoice-related event handlers
 export function initInvoiceHandlers() {
   // New Invoice
-  $('#new-invoice-btn').onclick = () => {
+  $('#new-invoice-btn').onclick = async () => {
     $('#invoice-modal-title').textContent = 'New Invoice';
     $('#edit-invoice-id').value = '';
     $('#invoice-form').reset();
@@ -16,6 +16,16 @@ export function initInvoiceHandlers() {
     $('#items-table tbody').innerHTML = '';
     $('#delete-invoice-btn').classList.add('hidden');
     addItemRow();
+    
+    // Generate and set the next invoice number
+    try {
+      const nextNumber = await generateNextInvoiceNumber();
+      $('#invoice-form').elements.number.value = nextNumber;
+    } catch (error) {
+      console.error("Error generating next invoice number:", error);
+      // Just let the user enter their own number if auto-generation fails
+    }
+    
     toggle($('#invoice-modal'), true);
     updateInvoicePreview();
   };
@@ -134,10 +144,27 @@ export function initInvoiceHandlers() {
       if (!items.length) { alert('Please add at least one item to the invoice'); return; }
       const total = items.reduce((s,i) => s+i.qty*i.unit, 0);
       const fd = new FormData(form);
+      
+      // Get the invoice number and check if it's unique
+      const invoiceNumber = fd.get('number');
+      const invoiceId = fd.get('invoiceId') ? Number(fd.get('invoiceId')) : null;
+      
+      // Check for uniqueness (only if not empty)
+      if (invoiceNumber && invoiceNumber.trim()) {
+        const isUnique = await isInvoiceNumberUnique(invoiceNumber, invoiceId);
+        if (!isUnique) {
+          alert(`Invoice number "${invoiceNumber}" is already in use. Please use a different number.`);
+          return;
+        }
+      } else {
+        alert('Please enter an invoice number.');
+        return;
+      }
+      
       // Get the paid status from the checkbox (0 if not checked, 1 if checked)
       const isPaid = $('#invoice-paid').checked ? 1 : 0;
-      const header = { id: fd.get('invoiceId')?Number(fd.get('invoiceId')):null,
-        number: fd.get('number'), date: fd.get('date'), clientId: Number(fd.get('clientId')), total, paid: isPaid };
+      const header = { id: invoiceId,
+        number: invoiceNumber, date: fd.get('date'), clientId: Number(fd.get('clientId')), total, paid: isPaid };
       await saveInvoice(header, items);
       
       // Update invoices and dashboard
@@ -167,10 +194,27 @@ export function initInvoiceHandlers() {
       if (!items.length) { alert('Please add at least one item to the invoice'); return; }
       const total = items.reduce((s,i) => s+i.qty*i.unit, 0);
       const fd = new FormData(form);
+      
+      // Get the invoice number and check if it's unique
+      const invoiceNumber = fd.get('number');
+      const invoiceId = fd.get('invoiceId') ? Number(fd.get('invoiceId')) : null;
+      
+      // Check for uniqueness (only if not empty)
+      if (invoiceNumber && invoiceNumber.trim()) {
+        const isUnique = await isInvoiceNumberUnique(invoiceNumber, invoiceId);
+        if (!isUnique) {
+          alert(`Invoice number "${invoiceNumber}" is already in use. Please use a different number.`);
+          return;
+        }
+      } else {
+        alert('Please enter an invoice number.');
+        return;
+      }
+      
       // Get the paid status from the checkbox (0 if not checked, 1 if checked)
       const isPaid = $('#invoice-paid').checked ? 1 : 0;
-      const header = { id: fd.get('invoiceId')?Number(fd.get('invoiceId')):null,
-        number: fd.get('number'), date: fd.get('date'), clientId: Number(fd.get('clientId')), total, paid: isPaid };
+      const header = { id: invoiceId,
+        number: invoiceNumber, date: fd.get('date'), clientId: Number(fd.get('clientId')), total, paid: isPaid };
       const saved = await saveInvoice(header, items);
       
       // Update invoices and dashboard

@@ -328,6 +328,80 @@
                   ></textarea>
                 </div>
               </div>
+              
+              <!-- Invoice Numbering -->
+              <div class="mt-4 p-4 bg-gray-50 rounded-lg">
+                <h5 class="text-sm font-medium mb-3">Invoice Numbering</h5>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-sm font-medium mb-1">Number Format</label>
+                    <input 
+                      type="text" 
+                      id="invoice-number-format" 
+                      name="invoiceNumberFormat" 
+                      class="w-full border border-gray-300 rounded p-2"
+                      placeholder="{YEAR}-{SEQ}"
+                    />
+                    <p class="text-xs text-gray-500 mt-1">
+                      Available variables: {YEAR}, {YY}, {MONTH}, {SEQ}, {PREFIX}
+                    </p>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium mb-1">Custom Prefix</label>
+                    <input 
+                      type="text" 
+                      id="invoice-number-prefix" 
+                      name="invoiceNumberPrefix" 
+                      class="w-full border border-gray-300 rounded p-2"
+                      placeholder="INV"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium mb-1">Counter Reset</label>
+                    <select 
+                      id="invoice-number-reset" 
+                      name="invoiceNumberReset" 
+                      class="w-full border border-gray-300 rounded p-2"
+                    >
+                      <option value="yearly">Yearly</option>
+                      <option value="monthly">Monthly</option>
+                      <option value="never">Never</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium mb-1">Number Padding</label>
+                    <input 
+                      type="number" 
+                      id="invoice-number-padding" 
+                      name="invoiceNumberPadding" 
+                      class="w-full border border-gray-300 rounded p-2"
+                      placeholder="4"
+                      min="1"
+                      max="10"
+                    />
+                    <p class="text-xs text-gray-500 mt-1">
+                      Number of digits for sequence (e.g., 4 = 0001)
+                    </p>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium mb-1">Current Counter</label>
+                    <input 
+                      type="number" 
+                      id="invoice-number-counter" 
+                      name="invoiceNumberCounter" 
+                      class="w-full border border-gray-300 rounded p-2"
+                      placeholder="1"
+                      min="1"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium mb-1">Next Number Preview</label>
+                    <div class="w-full border border-gray-300 rounded p-2 bg-gray-100 text-gray-800 font-mono" id="invoice-number-preview">
+                      INV-2023-0001
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
             
             <div class="pt-4">

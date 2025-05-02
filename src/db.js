@@ -88,6 +88,16 @@ export function toggleInvoicePaid(id) {
   return rpc("toggleInvoicePaid", id);
 }
 
+// Generate the next invoice number based on format settings
+export function generateNextInvoiceNumber() {
+  return rpc("generateNextInvoiceNumber");
+}
+
+// Check if an invoice number is unique
+export function isInvoiceNumberUnique(number, excludeId = null) {
+  return rpc("isInvoiceNumberUnique", number, excludeId);
+}
+
 // Make importDb available globally for the import function
 window.importDb = importDb;
 
