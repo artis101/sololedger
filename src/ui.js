@@ -71,23 +71,28 @@ export async function renderInvoices() {
   const fragment = document.createDocumentFragment();
   
   for (const row of invoices) {
+    const isPaid = row[5] === 1;
     const tr = document.createElement("tr");
-    tr.className = "odd:bg-gray-50";
+    tr.className = isPaid ? "odd:bg-gray-50 bg-green-50" : "odd:bg-gray-50";
     tr.innerHTML = `
       <td class="px-3 py-2">${row[1]}</td>
       <td class="px-3 py-2">${row[2]}</td>
       <td class="px-3 py-2">${row[3]}</td>
       <td class="px-3 py-2 text-right">${currencySymbol}${row[4].toFixed(2)}</td>
-      <td class="px-3 py-2 text-center"><button data-id="${
-        row[0]
-      }" class="text-blue-600 hover:underline view-pdf">PDF</button></td>
+      <td class="px-3 py-2 text-center">
+        <span class="inline-flex items-center">
+          <button data-id="${row[0]}" class="text-blue-600 hover:underline view-pdf mr-2">PDF</button>
+          <span class="status-badge ${isPaid ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'} text-xs px-2 py-1 rounded-full">
+            ${isPaid ? 'PAID' : 'UNPAID'}
+          </span>
+        </span>
+      </td>
       <td class="px-3 py-2 text-right">
-        <button data-id="${
-          row[0]
-        }" class="text-blue-600 hover:underline edit-invoice">Edit</button>
-        <button data-id="${
-          row[0]
-        }" class="text-red-600 hover:underline ml-2 delete-invoice">Delete</button>
+        <button data-id="${row[0]}" class="px-2 py-1 text-xs rounded ${
+          isPaid ? 'bg-gray-200 text-gray-800' : 'bg-green-600 text-white'
+        } toggle-paid mr-1">${isPaid ? 'Mark Unpaid' : 'Mark Paid'}</button>
+        <button data-id="${row[0]}" class="text-blue-600 hover:underline edit-invoice">Edit</button>
+        <button data-id="${row[0]}" class="text-red-600 hover:underline ml-2 delete-invoice">Delete</button>
       </td>`;
     fragment.appendChild(tr);
   }

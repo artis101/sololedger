@@ -1,4 +1,4 @@
-import { saveInvoice, getInvoiceWithItems, deleteInvoice, listClients, listInvoices, getBusinessSettings } from '../db.js';
+import { saveInvoice, getInvoiceWithItems, deleteInvoice, listClients, listInvoices, getBusinessSettings, toggleInvoicePaid } from '../db.js';
 import { renderInvoices, toggle, $, addItemRow } from '../ui.js';
 import { buildPdf } from '../pdf.js';
 import { buildHtmlPdf } from '../html-pdf.js';
@@ -12,6 +12,7 @@ export function initInvoiceHandlers() {
     $('#invoice-modal-title').textContent = 'New Invoice';
     $('#edit-invoice-id').value = '';
     $('#invoice-form').reset();
+    $('#invoice-paid').checked = false; // Ensure payment status is reset
     $('#items-table tbody').innerHTML = '';
     $('#delete-invoice-btn').classList.add('hidden');
     addItemRow();
@@ -40,7 +41,7 @@ export function initInvoiceHandlers() {
     }
   });
 
-  // Edit/Delete from table
+  // Edit/Delete/Toggle Paid from table
   $('#invoice-table').addEventListener('click', async (e) => {
     if (e.target.matches('.view-pdf')) {
       const id = Number(e.target.dataset.id);
@@ -52,6 +53,21 @@ export function initInvoiceHandlers() {
         // Generate and open PDF using HTML renderer
         buildHtmlPdf(invoice, { businessSettings });
       }
+    } else if (e.target.matches('.toggle-paid')) {
+      const id = Number(e.target.dataset.id);
+      try {
+        // Toggle the paid status
+        await toggleInvoicePaid(id);
+        
+        // Refresh the invoices list
+        const clients = await listClients();
+        const invoices = await listInvoices();
+        await renderInvoices();
+        await updateDashboardStats(clients, invoices);
+      } catch (error) {
+        console.error('Error toggling invoice paid status:', error);
+        alert(`Error updating invoice status: ${error.message}`);
+      }
     } else if (e.target.matches('.edit-invoice')) {
       const id = Number(e.target.dataset.id);
       const invoice = await getInvoiceWithItems(id);
@@ -60,6 +76,10 @@ export function initInvoiceHandlers() {
         $('#edit-invoice-id').value = id;
         $('#invoice-form').elements.number.value = invoice.header.number;
         $('#invoice-form').elements.date.value = invoice.header.date;
+        
+        // Set paid status
+        $('#invoice-paid').checked = invoice.header.paid === 1;
+        
         const clientsList = await listClients();
         for (const [cid, name] of clientsList) {
           if (name === invoice.header.client) {
@@ -114,8 +134,10 @@ export function initInvoiceHandlers() {
       if (!items.length) { alert('Please add at least one item to the invoice'); return; }
       const total = items.reduce((s,i) => s+i.qty*i.unit, 0);
       const fd = new FormData(form);
+      // Get the paid status from the checkbox (0 if not checked, 1 if checked)
+      const isPaid = $('#invoice-paid').checked ? 1 : 0;
       const header = { id: fd.get('invoiceId')?Number(fd.get('invoiceId')):null,
-        number: fd.get('number'), date: fd.get('date'), clientId: Number(fd.get('clientId')), total };
+        number: fd.get('number'), date: fd.get('date'), clientId: Number(fd.get('clientId')), total, paid: isPaid };
       await saveInvoice(header, items);
       
       // Update invoices and dashboard
@@ -145,8 +167,10 @@ export function initInvoiceHandlers() {
       if (!items.length) { alert('Please add at least one item to the invoice'); return; }
       const total = items.reduce((s,i) => s+i.qty*i.unit, 0);
       const fd = new FormData(form);
+      // Get the paid status from the checkbox (0 if not checked, 1 if checked)
+      const isPaid = $('#invoice-paid').checked ? 1 : 0;
       const header = { id: fd.get('invoiceId')?Number(fd.get('invoiceId')):null,
-        number: fd.get('number'), date: fd.get('date'), clientId: Number(fd.get('clientId')), total };
+        number: fd.get('number'), date: fd.get('date'), clientId: Number(fd.get('clientId')), total, paid: isPaid };
       const saved = await saveInvoice(header, items);
       
       // Update invoices and dashboard

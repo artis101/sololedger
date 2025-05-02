@@ -83,6 +83,11 @@ export function saveBusinessSettings(settings) {
   return rpc("saveBusinessSettings", settings);
 }
 
+// Toggle the paid status of an invoice
+export function toggleInvoicePaid(id) {
+  return rpc("toggleInvoicePaid", id);
+}
+
 // Make importDb available globally for the import function
 window.importDb = importDb;
 

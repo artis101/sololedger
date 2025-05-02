@@ -60,7 +60,13 @@ export function createInvoiceHTML(invoice, businessSettings) {
         
         <!-- Invoice Info -->
         <div class="w-1/2 text-right">
-          <h2 class="text-4xl font-bold text-blue-600 mb-4">INVOICE</h2>
+          <div class="flex flex-col items-end">
+            <h2 class="text-4xl font-bold text-blue-600 mb-4">INVOICE</h2>
+            ${invoice.header.paid ? 
+              `<div class="mb-4 -mt-3 inline-block bg-green-100 text-green-800 px-4 py-1 rounded-lg border-2 border-green-300 transform rotate-1">
+                <span class="text-xl font-bold">PAID</span>
+              </div>` : ''}
+          </div>
           <p class="text-xl mb-1"><span class="text-gray-600">Invoice #:</span> ${invoice.header.number}</p>
           <p class="text-xl mb-1"><span class="text-gray-600">Date:</span> ${formattedDate}</p>
           ${businessSettings?.paymentTerms ? `<p class="text-base text-gray-600 mb-1">Terms: ${businessSettings.paymentTerms}</p>` : ''}

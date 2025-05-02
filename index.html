@@ -130,7 +130,7 @@
               <th class="px-3 py-2">Date</th>
               <th class="px-3 py-2">Client</th>
               <th class="px-3 py-2 text-right">Total (€)</th>
-              <th class="px-3 py-2 text-center">PDF</th>
+              <th class="px-3 py-2 text-center">Document / Status</th>
               <th class="px-3 py-2 text-right">Actions</th>
             </tr>
           </thead>
@@ -567,6 +567,14 @@
                   id="client-select"
                 ></select>
               </div>
+            </div>
+            
+            <!-- Invoice Status -->
+            <div class="mt-2">
+              <label class="inline-flex items-center">
+                <input type="checkbox" name="paid" id="invoice-paid" class="form-checkbox h-5 w-5 text-green-600">
+                <span class="ml-2 text-sm font-medium">Mark as Paid</span>
+              </label>
             </div>
 
             <!-- Line items -->

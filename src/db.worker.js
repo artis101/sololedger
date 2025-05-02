@@ -60,6 +60,13 @@ const migrations = [
       /* initial schema created in initSql */
     },
   },
+  {
+    version: 2,
+    up: (db) => {
+      // Add paid column to invoices table with default value of 0 (unpaid)
+      db.run("ALTER TABLE invoices ADD COLUMN paid INTEGER DEFAULT 0");
+    },
+  },
 ];
 
 function runMigrations() {
@@ -100,6 +107,7 @@ async function initSql() {
       date TEXT NOT NULL,
       client_id INTEGER NOT NULL,
       total REAL NOT NULL,
+      paid INTEGER DEFAULT 0,
       FOREIGN KEY (client_id) REFERENCES clients(id)
   );`);
   db.run(`CREATE TABLE IF NOT EXISTS invoice_items (
@@ -159,7 +167,7 @@ function listClients() {
 }
 
 function listInvoices() {
-  const sql = `SELECT inv.id, inv.number, inv.date, c.name, inv.total
+  const sql = `SELECT inv.id, inv.number, inv.date, c.name, inv.total, inv.paid
                FROM invoices inv JOIN clients c ON c.id = inv.client_id
                ORDER BY inv.date DESC`;
   const res = db.exec(sql);
@@ -253,8 +261,11 @@ function saveInvoice(header, items) {
     
     let invoiceId;
     if (header.id) {
+      // Preserve paid status when updating if not explicitly set
+      const existingPaidStatus = header.paid !== undefined ? header.paid : getPaidStatus(header.id);
+      
       const stmt = db.prepare(
-        "UPDATE invoices SET number=?, date=?, client_id=?, total=? WHERE id=?"
+        "UPDATE invoices SET number=?, date=?, client_id=?, total=?, paid=? WHERE id=?"
       );
       try {
         stmt.run([
@@ -262,6 +273,7 @@ function saveInvoice(header, items) {
           header.date,
           header.clientId,
           calculatedTotal, // Use calculated total instead of header.total
+          existingPaidStatus,
           header.id,
         ]);
       } finally {
@@ -276,10 +288,12 @@ function saveInvoice(header, items) {
       invoiceId = header.id;
     } else {
       const stmt = db.prepare(
-        "INSERT INTO invoices (number,date,client_id,total) VALUES (?,?,?,?)"
+        "INSERT INTO invoices (number,date,client_id,total,paid) VALUES (?,?,?,?,?)"
       );
       try {
-        stmt.run([header.number, header.date, header.clientId, calculatedTotal]); // Use calculated total
+        // For new invoices, use the provided paid status or default to 0 (unpaid)
+        const paidStatus = header.paid !== undefined ? header.paid : 0;
+        stmt.run([header.number, header.date, header.clientId, calculatedTotal, paidStatus]); // Use calculated total
       } finally {
         stmt.free();
       }
@@ -302,14 +316,14 @@ function saveInvoice(header, items) {
 
 function getInvoiceWithItems(id) {
   const headStmt = db.prepare(
-    "SELECT inv.number, inv.date, c.name, inv.total FROM invoices inv JOIN clients c ON c.id=inv.client_id WHERE inv.id=?"
+    "SELECT inv.number, inv.date, c.name, inv.total, inv.paid FROM invoices inv JOIN clients c ON c.id=inv.client_id WHERE inv.id=?"
   );
   let header;
   try {
     headStmt.bind([id]);
     headStmt.step();
     const h = headStmt.get();
-    header = { number: h[0], date: h[1], client: h[2], total: h[3] };
+    header = { number: h[0], date: h[1], client: h[2], total: h[3], paid: h[4] };
   } finally {
     headStmt.free();
   }
@@ -353,6 +367,7 @@ function wipeDatabase() {
         date TEXT NOT NULL,
         client_id INTEGER NOT NULL,
         total REAL NOT NULL,
+        paid INTEGER DEFAULT 0,
         FOREIGN KEY (client_id) REFERENCES clients(id)
     );`);
     db.run(`CREATE TABLE IF NOT EXISTS invoice_items (
@@ -390,6 +405,41 @@ function wipeDatabase() {
     persistLocal().catch(() => {});
     
     return true;
+  });
+}
+
+// Get paid status for an invoice
+function getPaidStatus(invoiceId) {
+  try {
+    const stmt = db.prepare("SELECT paid FROM invoices WHERE id = ?");
+    stmt.bind([invoiceId]);
+    if (stmt.step()) {
+      return stmt.get()[0];
+    }
+    return 0; // Default to unpaid if not found
+  } catch (error) {
+    console.error("Error getting paid status:", error);
+    return 0;
+  }
+}
+
+// Toggle the paid status of an invoice
+function toggleInvoicePaid(id) {
+  return withTransaction(() => {
+    // Get current paid status
+    const currentStatus = getPaidStatus(id);
+    // Toggle it (1 becomes 0, 0 becomes 1)
+    const newStatus = currentStatus ? 0 : 1;
+    
+    const stmt = db.prepare("UPDATE invoices SET paid = ? WHERE id = ?");
+    try {
+      stmt.run([newStatus, id]);
+    } finally {
+      stmt.free();
+    }
+    
+    persistLocal().catch(() => {});
+    return newStatus;
   });
 }
 
@@ -469,6 +519,7 @@ const methods = {
   wipeDatabase,
   getBusinessSettings,
   saveBusinessSettings,
+  toggleInvoicePaid,
 };
 
 onmessage = async (e) => {
