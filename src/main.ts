@@ -1,5 +1,6 @@
 import { initSql, listClients, listInvoices } from "./db";
 import "./index.css";
+import "./styles-fix.css"; // Import custom fixes for dropdown menu
 import { renderClients, renderInvoices } from "./ui";
 import { initClientHandlers } from "./events/clients";
 import { initInvoiceHandlers } from "./events/invoices";

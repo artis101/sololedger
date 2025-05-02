@@ -1,0 +1,26 @@
+/* Custom dropdown fix styles */
+.invoice-actions-popover {
+  /* Ensure the dropdown stays on top */
+  z-index: 9999 !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Override any overflow: hidden that might be causing issues */
+body, html, table, tr, td, div {
+  overflow: visible !important;
+}
+
+/* Make the popover container position properly */
+.relative.inline-block {
+  position: static !important;
+}
+
+/* Add styles to ensure the dropdown content is visible */
+.invoice-actions-popover button {
+  background-color: white;
+}
+
+/* Ensure the dropdown has enough space to display properly */
+.invoice-actions-popover {
+  min-width: 200px;
+}

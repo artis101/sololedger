@@ -71,24 +71,47 @@ export function createInvoiceHTML(
   const containerDiv = document.createElement("div");
   containerDiv.id = "invoice-html-template";
   containerDiv.className = "bg-white p-8";
-  // Container style with improved text rendering for better clarity
+  // Adjusted container style with smaller font sizes and more spacing
   containerDiv.style.cssText =
-    "font-family: Arial, sans-serif; position: fixed; left: -9999px; top: -9999px; width: 595px; height: 842px; padding: 30px; margin: 0; box-sizing: border-box; font-size: 11px; display: flex; flex-direction: column; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;";
+    "font-family: Arial, sans-serif; position: fixed; left: -9999px; top: -9999px; width: 595px; height: 842px; padding: 40px; margin: 0; box-sizing: border-box; font-size: 10px; line-height: 1.4; display: flex; flex-direction: column; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;";
 
   // Get currency symbol from settings or default to Euro
   const currencySymbol = businessSettings?.currency
     ? getCurrencySymbol(businessSettings.currency)
     : "€";
 
-  // Format date
-  const formattedDate = new Date(invoice.header.date).toLocaleDateString(
-    "en-GB",
-    {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
+  // Format date in a clear, standardized format: DD/MM/YYYY
+  let formattedDate = "";
+  try {
+    // If we couldn't format it with special handling, try standard date parsing
+    if (!formattedDate) {
+      const dateObj = new Date(invoice.header.date);
+      if (!isNaN(dateObj.getTime())) {
+        // Format as DD/MM/YYYY for clear readability
+        const day = dateObj.getDate().toString().padStart(2, "0");
+        const month = (dateObj.getMonth() + 1).toString().padStart(2, "0");
+        const year = dateObj.getFullYear();
+        formattedDate = `${day}/${month}/${year}`;
+      } else {
+        // If we can't parse the date at all, use a simple string conversion if possible
+        const rawDate = invoice.header.date || "";
+        if (rawDate.includes("-")) {
+          // Simple conversion from YYYY-MM-DD to DD/MM/YYYY
+          const parts = rawDate.split("-");
+          if (parts.length === 3) {
+            formattedDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
+          } else {
+            formattedDate = rawDate;
+          }
+        } else {
+          formattedDate = rawDate;
+        }
+      }
     }
-  );
+  } catch (error) {
+    console.error("Error formatting date:", error);
+    formattedDate = invoice.header.date || ""; // Use original as fallback
+  }
 
   // Calculate subtotal and tax if we have a tax rate
   let taxRate = 0;
@@ -110,32 +133,32 @@ export function createInvoiceHTML(
         <div class="w-1/2">
           ${
             businessSettings?.businessName
-              ? `<h1 class="text-3xl font-bold mb-2">${businessSettings.businessName}</h1>`
+              ? `<h1 class="text-2xl font-bold mb-3">${businessSettings.businessName}</h1>`
               : ""
           }
           ${
             businessSettings?.tradingName
-              ? `<p class="text-xl text-gray-600 mb-2">${businessSettings.tradingName}</p>`
+              ? `<p class="text-base text-gray-600 mb-3">${businessSettings.tradingName}</p>`
               : ""
           }
           ${
             businessSettings?.businessAddress
-              ? `<p class="text-base text-gray-600 whitespace-pre-line">${businessSettings.businessAddress}</p>`
+              ? `<p class="text-sm text-gray-600 whitespace-pre-line mb-3">${businessSettings.businessAddress}</p>`
               : ""
           }
           ${
             businessSettings?.businessPhone
-              ? `<p class="text-base text-gray-600 mt-1">Phone: ${businessSettings.businessPhone}</p>`
+              ? `<p class="text-sm text-gray-600 mb-1">Phone: ${businessSettings.businessPhone}</p>`
               : ""
           }
           ${
             businessSettings?.businessEmail
-              ? `<p class="text-base text-gray-600">Email: ${businessSettings.businessEmail}</p>`
+              ? `<p class="text-sm text-gray-600 mb-1">Email: ${businessSettings.businessEmail}</p>`
               : ""
           }
           ${
             businessSettings?.taxId
-              ? `<p class="text-base text-gray-600">Tax ID: ${businessSettings.taxId}</p>`
+              ? `<p class="text-sm text-gray-600 mb-1">Tax ID: ${businessSettings.taxId}</p>`
               : ""
           }
         </div>
@@ -143,65 +166,57 @@ export function createInvoiceHTML(
         <!-- Invoice Info -->
         <div class="w-1/2 text-right">
           <div class="flex flex-col items-end">
-            <h2 class="text-4xl font-bold text-blue-600 mb-4">INVOICE</h2>
-            ${
-              invoice.header.paid
-                ? `<div class="mb-4 -mt-3 inline-block bg-green-100 text-green-800 px-4 py-1 rounded-lg border-2 border-green-300 transform rotate-1">
-                <span class="text-xl font-bold">PAID</span>
-              </div>`
-                : ""
-            }
-            ${
-              invoice.header.locked
-                ? `<div class="mb-4 -mt-3 ${
-                    invoice.header.paid ? "ml-2" : ""
-                  } inline-block bg-red-100 text-red-800 px-4 py-1 rounded-lg border-2 border-red-300 transform rotate-1">
-                <span class="text-xl font-bold">🔒 LOCKED</span>
-              </div>`
-                : ""
-            }
+            <h2 class="text-3xl font-bold text-blue-600 mb-5">INVOICE</h2>
+            <!-- PAID and LOCKED labels removed from PDF -->
           </div>
-          <p class="text-xl mb-1"><span class="text-gray-600">Invoice #:</span> ${
+          <p class="text-base mb-2"><span class="text-gray-600">Invoice #:</span> ${
             invoice.header.number
           }</p>
-          <p class="text-xl mb-1"><span class="text-gray-600">Date:</span> ${formattedDate}</p>
+          <p class="text-base mb-2"><span class="text-gray-600">Date:</span> ${formattedDate}</p>
           ${
             businessSettings?.paymentTerms
-              ? `<p class="text-base text-gray-600 mb-1">Terms: ${businessSettings.paymentTerms}</p>`
+              ? `<p class="text-sm text-gray-600 mb-2">Terms: ${businessSettings.paymentTerms}</p>`
               : ""
           }
         </div>
       </div>
       
-      <!-- Client Info -->
-      <div class="mb-6 p-4 bg-gray-50 rounded" style="flex: 0 0 auto;">
-        <h3 class="text-xl font-semibold text-gray-700 mb-2">Bill To</h3>
-        <p class="text-xl">${invoice.header.client}</p>
+      <!-- Client Info with improved spacing -->
+      <div class="mb-8 p-4 bg-gray-50 rounded" style="flex: 0 0 auto;">
+        <h3 class="text-base font-semibold text-gray-700 mb-2">Bill To</h3>
+        <p class="text-base">${invoice.header.client}</p>
       </div>
       
       <!-- Main Content Area - Grows to Fill Space -->
       <div style="flex: 1 1 auto; display: flex; flex-direction: column;">
         <!-- Items Table -->
-        <table class="w-full mb-6" style="flex: 1 0 auto;">
+        <table class="w-full mb-8" style="flex: 1 0 auto;">
           <thead>
             <tr class="bg-gray-100 text-left">
-              <th class="p-3 border-b-2 border-gray-300 w-1/2 text-lg">Description</th>
-              <th class="p-3 border-b-2 border-gray-300 text-center text-lg">Qty</th>
-              <th class="p-3 border-b-2 border-gray-300 text-right text-lg">Unit Price</th>
-              <th class="p-3 border-b-2 border-gray-300 text-right text-lg">Amount</th>
+              <th class="p-3 border-b-2 border-gray-300 w-1/2 text-sm font-medium">Description</th>
+              <th class="p-3 border-b-2 border-gray-300 text-center text-sm font-medium">Qty</th>
+              <th class="p-3 border-b-2 border-gray-300 text-right text-sm font-medium">Unit Price</th>
+              <th class="p-3 border-b-2 border-gray-300 text-right text-sm font-medium">Amount</th>
             </tr>
           </thead>
           <tbody>
             ${invoice.items
+              // Filter out empty rows or rows with no description or zero values
+              .filter(
+                (item) =>
+                  item.description &&
+                  item.description.trim() !== "" &&
+                  (item.qty > 0 || item.unit > 0)
+              )
               .map(
                 (item) => `
               <tr class="border-b border-gray-200">
-                <td class="p-3 text-base">${item.description}</td>
-                <td class="p-3 text-center text-base">${item.qty}</td>
-                <td class="p-3 text-right text-base">${currencySymbol}${item.unit.toFixed(
+                <td class="p-3 text-sm">${item.description}</td>
+                <td class="p-3 text-center text-sm">${item.qty}</td>
+                <td class="p-3 text-right text-sm">${currencySymbol}${item.unit.toFixed(
                   2
                 )}</td>
-                <td class="p-3 text-right text-base">${currencySymbol}${(
+                <td class="p-3 text-right text-sm">${currencySymbol}${(
                   item.qty * item.unit
                 ).toFixed(2)}</td>
               </tr>
@@ -212,11 +227,11 @@ export function createInvoiceHTML(
         </table>
         
         <!-- Totals -->
-        <div class="flex justify-end mb-6" style="flex: 0 0 auto;">
+        <div class="flex justify-end mb-8" style="flex: 0 0 auto;">
           <div class="w-1/3">
             <div class="flex justify-between border-b border-gray-200 py-2">
-              <span class="font-semibold text-lg">Subtotal:</span>
-              <span class="text-lg">${currencySymbol}${subtotal.toFixed(
+              <span class="font-semibold text-sm">Subtotal:</span>
+              <span class="text-sm">${currencySymbol}${subtotal.toFixed(
     2
   )}</span>
             </div>
@@ -224,17 +239,17 @@ export function createInvoiceHTML(
               businessSettings?.taxRate
                 ? `
             <div class="flex justify-between border-b border-gray-200 py-2">
-              <span class="font-semibold text-lg">Tax (${taxRate}%):</span>
-              <span class="text-lg">${currencySymbol}${taxAmount.toFixed(
+              <span class="font-semibold text-sm">Tax (${taxRate}%):</span>
+              <span class="text-sm">${currencySymbol}${taxAmount.toFixed(
                     2
                   )}</span>
             </div>
             `
                 : ""
             }
-            <div class="flex justify-between py-2 font-bold">
-              <span class="text-xl">Total:</span>
-              <span class="text-xl">${currencySymbol}${invoice.header.total.toFixed(
+            <div class="flex justify-between py-2 font-bold mt-1">
+              <span class="text-base">Total:</span>
+              <span class="text-base">${currencySymbol}${invoice.header.total.toFixed(
     2
   )}</span>
             </div>
@@ -248,25 +263,25 @@ export function createInvoiceHTML(
             businessSettings?.bankName || businessSettings?.accountNumber
               ? `
           <div class="mb-6 p-4 bg-gray-50 rounded">
-            <h3 class="text-xl font-semibold text-gray-700 mb-2">Payment Details</h3>
+            <h3 class="text-base font-semibold text-gray-700 mb-3">Payment Details</h3>
             ${
               businessSettings?.bankName
-                ? `<p class="text-base mb-1"><span class="font-semibold">Bank:</span> ${businessSettings.bankName}</p>`
+                ? `<p class="text-sm mb-2"><span class="font-semibold">Bank:</span> ${businessSettings.bankName}</p>`
                 : ""
             }
             ${
               businessSettings?.accountName
-                ? `<p class="text-base mb-1"><span class="font-semibold">Account Name:</span> ${businessSettings.accountName}</p>`
+                ? `<p class="text-sm mb-2"><span class="font-semibold">Account Name:</span> ${businessSettings.accountName}</p>`
                 : ""
             }
             ${
               businessSettings?.accountNumber
-                ? `<p class="text-base mb-1"><span class="font-semibold">IBAN/Account:</span> ${businessSettings.accountNumber}</p>`
+                ? `<p class="text-sm mb-2"><span class="font-semibold">IBAN/Account:</span> ${businessSettings.accountNumber}</p>`
                 : ""
             }
             ${
               businessSettings?.swiftCode
-                ? `<p class="text-base mb-1"><span class="font-semibold">SWIFT/BIC:</span> ${businessSettings.swiftCode}</p>`
+                ? `<p class="text-sm mb-2"><span class="font-semibold">SWIFT/BIC:</span> ${businessSettings.swiftCode}</p>`
                 : ""
             }
           </div>
@@ -279,8 +294,8 @@ export function createInvoiceHTML(
             businessSettings?.invoiceNote
               ? `
           <div class="border-t border-gray-200 pt-4">
-            <h3 class="text-xl font-semibold text-gray-700 mb-2">Notes</h3>
-            <p class="text-base text-gray-600 whitespace-pre-line">${businessSettings.invoiceNote}</p>
+            <h3 class="text-base font-semibold text-gray-700 mb-2">Notes</h3>
+            <p class="text-sm text-gray-600 whitespace-pre-line">${businessSettings.invoiceNote}</p>
           </div>
           `
               : ""
@@ -326,7 +341,7 @@ export async function buildHtmlPdf(
 
     // FIXED APPROACH: Use higher DPI to prevent blurry text, while maintaining proper zoom
     const canvasSettings = {
-      scale: 2, // Higher scale for better text quality, without affecting zoom
+      scale: 3, // Higher scale for better text quality, without affecting zoom
       useCORS: true,
       logging: false,
       allowTaint: true,
@@ -339,8 +354,8 @@ export async function buildHtmlPdf(
     };
 
     // Make sure the div is fully rendered before conversion
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
     // Convert HTML to canvas with appropriate quality
     const canvas = await html2canvas(invoiceDiv, canvasSettings);
 
@@ -353,24 +368,28 @@ export async function buildHtmlPdf(
 
     // Create a variable for the image that will be in scope for the whole function
     let image;
-    
+
     try {
       // Always use PNG for better text clarity - important for crisp text
       const imgData = canvas.toDataURL("image/png", 1.0);
       const base64Data = imgData.replace(/^data:image\/png;base64,/, "");
-      const pngImageBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-      
+      const pngImageBytes = Uint8Array.from(atob(base64Data), (c) =>
+        c.charCodeAt(0)
+      );
+
       // Embed PNG for maximum text clarity
       image = await pdfDoc.embedPng(pngImageBytes);
     } catch (error) {
       console.error("Error creating PDF image from PNG:", error);
-      
+
       // Fallback to JPEG if PNG fails, but with high quality setting
       try {
         // Use highest JPEG quality to maintain text clarity
         const imgData = canvas.toDataURL("image/jpeg", 1.0);
         const base64Data = imgData.replace(/^data:image\/jpeg;base64,/, "");
-        const jpgImageBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+        const jpgImageBytes = Uint8Array.from(atob(base64Data), (c) =>
+          c.charCodeAt(0)
+        );
         image = await pdfDoc.embedJpg(jpgImageBytes);
       } catch (fallbackError) {
         console.error("Both PNG and JPEG embedding failed:", fallbackError);

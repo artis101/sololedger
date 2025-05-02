@@ -156,7 +156,32 @@ export async function buildPdf(
     font,
   });
 
-  page.drawText(`Date: ${invoice.header.date}`, {
+  // Format date for better readability
+  let formattedDate = invoice.header.date;
+  try {
+    
+    // If we couldn't format it with special handling, try standard date parsing
+    if (formattedDate === invoice.header.date) {
+      const dateObj = new Date(invoice.header.date);
+      if (!isNaN(dateObj.getTime())) {
+        // Format as DD/MM/YYYY 
+        const day = dateObj.getDate().toString().padStart(2, '0');
+        const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+        const year = dateObj.getFullYear();
+        formattedDate = `${day}/${month}/${year}`;
+      } else if (invoice.header.date && invoice.header.date.includes('-')) {
+        // Simple conversion from YYYY-MM-DD to DD/MM/YYYY
+        const parts = invoice.header.date.split('-');
+        if (parts.length === 3) {
+          formattedDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error formatting date in PDF:", error);
+  }
+  
+  page.drawText(`Date: ${formattedDate}`, {
     x: 400,
     y: 765,
     size: 12,

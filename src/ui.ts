@@ -200,7 +200,7 @@ export async function renderInvoices(): Promise<void> {
             </svg>
           </button>
           <div 
-            class="invoice-actions-popover origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 hidden z-10"
+            class="invoice-actions-popover origin-top-right fixed right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 hidden z-50"
           >
             <div class="py-1" role="menu" aria-orientation="vertical">
               <!-- Send Action -->
@@ -294,6 +294,9 @@ function setupInvoiceActionPopovers(): void {
   function closeAllPopovers(): void {
     document.querySelectorAll(".invoice-actions-popover").forEach((popover) => {
       popover.classList.add("hidden");
+      // Reset any inline styles to prevent stale positioning
+      (popover as HTMLElement).style.top = "";
+      (popover as HTMLElement).style.right = "";
     });
   }
 
@@ -332,6 +335,15 @@ function setupInvoiceActionPopovers(): void {
 
       // Toggle this popover
       popover.classList.toggle("hidden");
+      
+      // Position the popover correctly relative to the button
+      if (!popover.classList.contains("hidden")) {
+        const buttonRect = buttonElement.getBoundingClientRect();
+        
+        // Position the popover immediately to the right of the button
+        popover.style.top = `${buttonRect.top}px`;
+        popover.style.right = `${window.innerWidth - buttonRect.right}px`;
+      }
     });
   });
 
