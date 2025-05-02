@@ -603,7 +603,25 @@
               New Invoice
             </h3>
           </div>
-          <div class="p-6 overflow-y-auto flex-1">
+          
+          <!-- Tab Navigation for Form/Preview -->
+          <div class="px-6 pt-4 flex border-b">
+            <button 
+              id="invoice-form-tab" 
+              class="invoice-tab-button tab-active px-4 py-2 font-medium border-b-2 border-blue-600"
+            >
+              Edit Form
+            </button>
+            <button 
+              id="invoice-preview-tab" 
+              class="invoice-tab-button px-4 py-2 font-medium border-b-2 border-transparent"
+            >
+              Preview
+            </button>
+          </div>
+          
+          <!-- Form Section -->
+          <div id="invoice-form-content" class="p-6 overflow-y-auto flex-1">
             <form
               id="invoice-form"
               class="space-y-4"
@@ -644,10 +662,23 @@
             </div>
             
             <!-- Invoice Status -->
-            <div class="mt-2">
+            <div class="mt-2 flex space-x-6">
               <label class="inline-flex items-center">
                 <input type="checkbox" name="paid" id="invoice-paid" class="form-checkbox h-5 w-5 text-green-600">
                 <span class="ml-2 text-sm font-medium">Mark as Paid</span>
+              </label>
+              
+              <label class="inline-flex items-center">
+                <input type="checkbox" name="locked" id="invoice-locked" class="form-checkbox h-5 w-5 text-red-600">
+                <span class="ml-2 text-sm font-medium">Lock Invoice</span>
+                <span class="ml-1 group relative cursor-help">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-gray-800 text-white text-xs rounded py-1 px-2 w-48">
+                    Locking an invoice prevents accidental edits. Locked invoices can be viewed and copied but not edited without unlocking first.
+                  </span>
+                </span>
               </label>
             </div>
 
@@ -681,44 +712,42 @@
           </div>
           
           <!-- Preview Section -->
-          <div class="p-6 border-t border-gray-200 flex flex-col md:flex-row gap-4">
-            <div class="w-full md:w-1/2">
-              <h3 class="text-lg font-semibold mb-2">Preview</h3>
-              <iframe id="invoice-preview" class="w-full h-96 border rounded"></iframe>
-            </div>
-            
-            <div class="w-full md:w-1/2 flex flex-col justify-end">
-              <div class="flex flex-wrap justify-between items-center gap-3 pt-4">
+          <div id="invoice-preview-content" class="p-6 overflow-y-auto flex-1 hidden">
+            <iframe id="invoice-preview" class="w-full h-[500px] border rounded"></iframe>
+          </div>
+          
+          <!-- Action Buttons -->
+          <div class="p-6 border-t border-gray-200">
+            <div class="flex flex-wrap justify-between items-center gap-3">
+              <button
+                type="button"
+                id="delete-invoice-btn"
+                class="px-4 py-2 rounded bg-red-600 text-white shadow hidden"
+              >
+                Delete
+              </button>
+              <div class="flex flex-wrap gap-3 ml-auto">
                 <button
                   type="button"
-                  id="delete-invoice-btn"
-                  class="px-4 py-2 rounded bg-red-600 text-white shadow hidden"
+                  id="cancel-invoice"
+                  class="px-4 py-2 rounded border border-gray-300"
                 >
-                  Delete
+                  Cancel
                 </button>
-                <div class="flex flex-wrap gap-3 ml-auto">
-                  <button
-                    type="button"
-                    id="cancel-invoice"
-                    class="px-4 py-2 rounded border border-gray-300"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    id="save-invoice-btn"
-                    class="px-4 py-2 rounded bg-blue-600 text-white shadow"
-                  >
-                    Save
-                  </button>
-                  <button
-                    type="submit"
-                    form="invoice-form"
-                    class="px-4 py-2 rounded bg-green-600 text-white shadow"
-                  >
-                    Save & PDF
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  id="save-invoice-btn"
+                  class="px-4 py-2 rounded bg-blue-600 text-white shadow"
+                >
+                  Save
+                </button>
+                <button
+                  type="submit"
+                  form="invoice-form"
+                  class="px-4 py-2 rounded bg-green-600 text-white shadow"
+                >
+                  Save & PDF
+                </button>
               </div>
             </div>
           </div>
