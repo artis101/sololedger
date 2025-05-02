@@ -8,8 +8,8 @@ import { initDriveHandlers } from "./events/drive.js";
 document.addEventListener("DOMContentLoaded", async () => {
   try {
     await initSql();
-    renderClients();
-    renderInvoices();
+    await renderClients();
+    await renderInvoices();
   } catch (error) {
     console.error("Application initialization error:", error);
     alert(

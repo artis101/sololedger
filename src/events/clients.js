@@ -20,7 +20,7 @@ export function initClientHandlers() {
   $('#client-table').addEventListener('click', async (e) => {
     if (e.target.matches('.edit-client')) {
       const id = Number(e.target.dataset.id);
-      const client = getClient(id);
+      const client = await getClient(id);
       if (client) {
         $('#client-modal-title').textContent = 'Edit Client';
         $('#edit-client-id').value = client.id;
@@ -34,8 +34,8 @@ export function initClientHandlers() {
       const id = Number(e.target.dataset.id);
       if (confirm('Are you sure you want to delete this client?')) {
         try {
-          deleteClient(id);
-          renderClients();
+          await deleteClient(id);
+          await renderClients();
           if (driveFileId) {
             await syncDbToDrive(driveFileId);
           }
@@ -52,8 +52,8 @@ export function initClientHandlers() {
     const id = Number($('#edit-client-id').value);
     if (id && confirm('Are you sure you want to delete this client?')) {
       try {
-        deleteClient(id);
-        renderClients();
+        await deleteClient(id);
+        await renderClients();
         if (driveFileId) {
           await syncDbToDrive(driveFileId);
         }
@@ -71,13 +71,13 @@ export function initClientHandlers() {
     try {
       const fd = new FormData(e.target);
       const clientId = fd.get('clientId');
-      saveClient({
+      await saveClient({
         id: clientId ? Number(clientId) : null,
         name: fd.get('name'),
         email: fd.get('email'),
         address: fd.get('address'),
       });
-      renderClients();
+      await renderClients();
       if (driveFileId) {
         const syncSuccess = await syncDbToDrive(driveFileId);
         if (!syncSuccess) {

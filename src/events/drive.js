@@ -58,7 +58,8 @@ export function initDriveHandlers() {
         if (!resp.ok) throw new Error(`API error: ${resp.status} ${await resp.text()}`);
         driveFileId = (await resp.json()).id;
       }
-      renderClients(); renderInvoices();
+      await renderClients();
+      await renderInvoices();
       console.log('Google Drive linked ✔');
     } catch (error) {
       console.error('Google Drive error:', error);

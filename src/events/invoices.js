@@ -43,13 +43,14 @@ export function initInvoiceHandlers() {
   $('#invoice-table').addEventListener('click', async (e) => {
     if (e.target.matches('.edit-invoice')) {
       const id = Number(e.target.dataset.id);
-      const invoice = getInvoiceWithItems(id);
+      const invoice = await getInvoiceWithItems(id);
       if (invoice) {
         $('#invoice-modal-title').textContent = 'Edit Invoice';
         $('#edit-invoice-id').value = id;
         $('#invoice-form').elements.number.value = invoice.header.number;
         $('#invoice-form').elements.date.value = invoice.header.date;
-        for (const [cid, name] of listClients()) {
+        const clientsList = await listClients();
+        for (const [cid, name] of clientsList) {
           if (name === invoice.header.client) {
             $('#client-select').value = cid;
             break;
@@ -65,8 +66,8 @@ export function initInvoiceHandlers() {
       const id = Number(e.target.dataset.id);
       if (confirm('Are you sure you want to delete this invoice?')) {
         try {
-          deleteInvoice(id);
-          renderInvoices();
+          await deleteInvoice(id);
+          await renderInvoices();
           if (driveFileId) await syncDbToDrive(driveFileId);
         } catch (error) {
           console.error('Error deleting invoice:', error);
@@ -81,8 +82,8 @@ export function initInvoiceHandlers() {
     const id = Number($('#edit-invoice-id').value);
     if (id && confirm('Are you sure you want to delete this invoice?')) {
       try {
-        deleteInvoice(id);
-        renderInvoices();
+        await deleteInvoice(id);
+        await renderInvoices();
         if (driveFileId) await syncDbToDrive(driveFileId);
         toggle($('#invoice-modal'), false);
       } catch (error) {
@@ -106,8 +107,8 @@ export function initInvoiceHandlers() {
       const fd = new FormData(form);
       const header = { id: fd.get('invoiceId')?Number(fd.get('invoiceId')):null,
         number: fd.get('number'), date: fd.get('date'), clientId: Number(fd.get('clientId')), total };
-      saveInvoice(header, items);
-      renderInvoices();
+      await saveInvoice(header, items);
+      await renderInvoices();
       if (driveFileId) await syncDbToDrive(driveFileId);
       toggle($('#invoice-modal'), false);
       form.reset(); $('#items-table tbody').innerHTML = '';
@@ -132,10 +133,10 @@ export function initInvoiceHandlers() {
       const fd = new FormData(form);
       const header = { id: fd.get('invoiceId')?Number(fd.get('invoiceId')):null,
         number: fd.get('number'), date: fd.get('date'), clientId: Number(fd.get('clientId')), total };
-      const saved = saveInvoice(header, items);
-      renderInvoices();
+      const saved = await saveInvoice(header, items);
+      await renderInvoices();
       if (driveFileId) await syncDbToDrive(driveFileId);
-      const full = getInvoiceWithItems(saved);
+      const full = await getInvoiceWithItems(saved);
       buildPdf(full);
       toggle($('#invoice-modal'), false);
       form.reset(); $('#items-table tbody').innerHTML = '';
