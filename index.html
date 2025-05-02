@@ -19,6 +19,19 @@
             <div class="absolute bottom-0 left-0 w-1/3 h-1/3 bg-purple-200 rounded-full filter blur-3xl transform -translate-x-1/4 translate-y-1/4"></div>
           </div>
           
+          <!-- GitHub button in header -->
+          <div class="absolute top-4 right-16 z-30 sm:block">
+            <a href="https://github.com/artis101/sololedger" 
+               class="flex items-center gap-2 text-sm font-medium bg-gray-800 text-white px-3 py-1.5 rounded-full hover:bg-gray-700 transition-colors shadow-md"
+               target="_blank"
+               rel="noopener noreferrer">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="inline-block">
+                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+              </svg>
+              Fork on GitHub
+            </a>
+          </div>
+
           <nav class="relative flex items-center justify-between px-4 sm:px-6 lg:px-8 z-10" aria-label="Global">
             <div class="flex items-center flex-1">
               <div class="flex items-center justify-between w-full">
@@ -31,12 +44,22 @@
                     COMMUNITY
                   </span>
                 </div>
-                <div class="flex items-center">
-                  <a href="/app/dashboard" class="text-sm sm:text-base font-medium text-indigo-600 hover:text-indigo-800 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full transition-all hover:bg-indigo-100 shadow-sm">Dashboard</a>
-                </div>
               </div>
             </div>
           </nav>
+          
+          <!-- Centered Dashboard Button -->
+          <div class="absolute top-4 left-0 right-0 mx-auto w-max z-30">
+            <a href="/app/dashboard" class="text-base sm:text-lg font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 px-6 sm:px-8 py-2 sm:py-3 rounded-full transition-all transform hover:scale-105 shadow-lg flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="7" height="7"></rect>
+                <rect x="14" y="3" width="7" height="7"></rect>
+                <rect x="14" y="14" width="7" height="7"></rect>
+                <rect x="3" y="14" width="7" height="7"></rect>
+              </svg>
+              Dashboard
+            </a>
+          </div>
 
           <main class="mt-16 mx-auto max-w-7xl px-4 sm:mt-24 relative z-10">
             <div class="text-center">
@@ -46,7 +69,7 @@
               </h1>
               <p class="mt-6 max-w-md mx-auto text-base text-gray-600 sm:text-lg md:mt-8 md:text-xl md:max-w-3xl">
                 Create professional invoices, track payments, and manage clients with ease.
-                <span class="font-medium">Your data stays on your device</span> — no servers, no tracking.
+                <span class="font-medium">100% free and open-source.</span> Your data <span class="font-medium">never leaves your device</span> — import and export your entire database anytime. <span class="font-medium">You own your data.</span>
               </p>
               <div class="mt-8 max-w-md mx-auto sm:flex sm:justify-center md:mt-10">
                 <div class="rounded-full shadow-lg">
@@ -133,7 +156,7 @@
                   </div>
                   <h3 class="text-lg font-semibold text-gray-900 mb-2">Privacy & Security</h3>
                   <p class="text-gray-600">
-                    Your sensitive data never leaves your device. No servers, no data collection, complete privacy by design. You stay in control.
+                    Your data <strong>never leaves your device</strong>. No servers, no data collection, 100% privacy by design. You <strong>own your data</strong> completely and can export/import anytime.
                   </p>
                 </div>
               </div>
@@ -193,7 +216,7 @@
             </h2>
             <p class="mt-6 text-xl leading-7 text-indigo-100 max-w-2xl mx-auto">
               Join freelancers who use SoloLedger to streamline their invoicing workflow. 
-              100% free, no sign-up needed, and your data stays with you.
+              <strong>100% free and open-source</strong>, no sign-up needed, and your data never leaves your device.
             </p>
             
             <div class="mt-10 flex flex-col sm:flex-row justify-center items-center gap-4">
@@ -211,25 +234,28 @@
               </div>
             </div>
             
-            <!-- Trust indicators -->
-            <div class="mt-10 flex flex-col sm:flex-row items-center justify-center gap-6 text-indigo-200 text-sm">
-              <div class="flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <!-- Trust indicators with enhanced styling -->
+            <div class="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-4xl mx-auto">
+              <div class="bg-indigo-900/40 rounded-xl p-4 flex flex-col items-center text-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-2 text-indigo-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
-                <span>100% Privacy-Focused</span>
+                <h4 class="text-white font-bold text-lg mb-1">100% Private</h4>
+                <p class="text-indigo-200 text-sm">Your data never leaves your device. No servers, no tracking.</p>
               </div>
-              <div class="flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div class="bg-indigo-900/40 rounded-xl p-4 flex flex-col items-center text-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-2 text-indigo-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                 </svg>
-                <span>Open Source</span>
+                <h4 class="text-white font-bold text-lg mb-1">Free & Open Source</h4>
+                <p class="text-indigo-200 text-sm">100% free forever. Transparent and community-driven.</p>
               </div>
-              <div class="flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              <div class="bg-indigo-900/40 rounded-xl p-4 flex flex-col items-center text-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-2 text-indigo-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
                 </svg>
-                <span>Free Forever</span>
+                <h4 class="text-white font-bold text-lg mb-1">You Own Your Data</h4>
+                <p class="text-indigo-200 text-sm">Export/import your database anytime. Full control of your business data.</p>
               </div>
             </div>
           </div>
@@ -667,14 +693,27 @@
               <h4 class="text-sm font-medium mb-1">App Information</h4>
               <p class="text-sm text-gray-600">SoloLedger - 100% client side invoicing app</p>
               <p class="text-sm text-gray-600">Version: 1.0.0</p>
-              <div class="mt-2 inline-flex items-center">
-                <span class="text-xs bg-gradient-to-r from-indigo-800 to-purple-700 text-white px-2 py-1 rounded shadow flex items-center gap-1">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 2L4.5 10 8 10 8 22 16 22 16 10 19.5 10z" />
-                  </svg>
-                  COMMUNITY EDITION
-                </span>
-                <a href="https://www.gnu.org/licenses/agpl-3.0.en.html" target="_blank" class="text-xs text-indigo-600 ml-1 hover:underline">AGPL-3.0</a>
+              <div class="mt-3 space-y-2">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="text-xs bg-gradient-to-r from-indigo-800 to-purple-700 text-white px-2 py-1 rounded shadow flex items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12 2L4.5 10 8 10 8 22 16 22 16 10 19.5 10z" />
+                    </svg>
+                    COMMUNITY EDITION
+                  </span>
+                  <a href="https://www.gnu.org/licenses/agpl-3.0.en.html" target="_blank" class="text-xs text-indigo-600 hover:underline">AGPL-3.0</a>
+                </div>
+                <div class="flex flex-col gap-2">
+                  <p class="text-sm text-gray-600">
+                    <strong>100% free and open-source</strong> • Your data <strong>never leaves your device</strong>
+                  </p>
+                  <a href="https://github.com/artis101/sololedger" target="_blank" class="w-full sm:w-auto bg-gray-800 text-white py-2 px-3 rounded flex items-center justify-center gap-2 hover:bg-gray-700 transition-colors shadow-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                    </svg>
+                    <span class="font-medium">Fork me on GitHub</span>
+                  </a>
+                </div>
               </div>
             </div>
           </div>
