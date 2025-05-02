@@ -36,9 +36,7 @@ export function initClientHandlers() {
         try {
           await deleteClient(id);
           await renderClients();
-          if (driveFileId) {
-            await syncDbToDrive(driveFileId);
-          }
+            // Drive sync now manual via the Connect/Sync button
         } catch (error) {
           console.error('Error deleting client:', error);
           alert(`Error deleting client: ${error.message}`);
@@ -54,9 +52,7 @@ export function initClientHandlers() {
       try {
         await deleteClient(id);
         await renderClients();
-        if (driveFileId) {
-          await syncDbToDrive(driveFileId);
-        }
+            // Drive sync now manual via the Connect/Sync button
         toggle($('#client-modal'), false);
       } catch (error) {
         console.error('Error deleting client:', error);
@@ -78,12 +74,7 @@ export function initClientHandlers() {
         address: fd.get('address'),
       });
       await renderClients();
-      if (driveFileId) {
-        const syncSuccess = await syncDbToDrive(driveFileId);
-        if (!syncSuccess) {
-          console.warn('Google Drive sync failed, but client was saved locally');
-        }
-      }
+      // Drive sync now manual via the Connect/Sync button
       toggle($('#client-modal'), false);
       e.target.reset();
     } catch (error) {

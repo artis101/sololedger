@@ -67,8 +67,8 @@ export function initInvoiceHandlers() {
       if (confirm('Are you sure you want to delete this invoice?')) {
         try {
           await deleteInvoice(id);
-          await renderInvoices();
-          if (driveFileId) await syncDbToDrive(driveFileId);
+            await renderInvoices();
+            // Drive sync now manual via the Connect/Sync button
         } catch (error) {
           console.error('Error deleting invoice:', error);
           alert(`Error deleting invoice: ${error.message}`);
@@ -84,7 +84,7 @@ export function initInvoiceHandlers() {
       try {
         await deleteInvoice(id);
         await renderInvoices();
-        if (driveFileId) await syncDbToDrive(driveFileId);
+        // Drive sync now manual via the Connect/Sync button
         toggle($('#invoice-modal'), false);
       } catch (error) {
         console.error('Error deleting invoice:', error);
@@ -109,7 +109,7 @@ export function initInvoiceHandlers() {
         number: fd.get('number'), date: fd.get('date'), clientId: Number(fd.get('clientId')), total };
       await saveInvoice(header, items);
       await renderInvoices();
-      if (driveFileId) await syncDbToDrive(driveFileId);
+      // Drive sync now manual via the Connect/Sync button
       toggle($('#invoice-modal'), false);
       form.reset(); $('#items-table tbody').innerHTML = '';
     } catch (error) {
@@ -135,7 +135,7 @@ export function initInvoiceHandlers() {
         number: fd.get('number'), date: fd.get('date'), clientId: Number(fd.get('clientId')), total };
       const saved = await saveInvoice(header, items);
       await renderInvoices();
-      if (driveFileId) await syncDbToDrive(driveFileId);
+      // Drive sync now manual via the Connect/Sync button
       const full = await getInvoiceWithItems(saved);
       buildPdf(full);
       toggle($('#invoice-modal'), false);

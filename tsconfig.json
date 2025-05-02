@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "esnext",
+    "moduleResolution": "node",
+    "strict": true,
+    "noImplicitAny": true,
+    "allowJs": true,
+    // disable checking existing JS; migrate to TS files to benefit from strict
+    // "checkJs": true,
+    "jsx": "preserve",
+    "sourceMap": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "baseUrl": "."
+  },
+  "include": [
+    "src/**/*",
+    "vite.config.js",
+    "tailwind.config.js",
+    "postcss.config.js"
+  ],
+  "exclude": ["node_modules", "dist"]
+}

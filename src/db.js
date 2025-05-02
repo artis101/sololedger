@@ -52,22 +52,12 @@ function debounce(fn, ms) {
   };
 }
 
-// Refresh the access token silently if possible
-async function refreshAccessTokenIfNeeded() {
-  if (window.tokenClient) {
-    return new Promise((resolve) => {
-      window.tokenClient.requestAccessToken({ prompt: 'none' });
-      const interval = setInterval(() => {
-        if (gapi.client.getToken()) { clearInterval(interval); resolve(); }
-      }, 50);
-    });
-  }
-}
+// NOTE: silent token refresh has been removed to avoid COOP popup blocking errors
 
 // Drive sync implementation
 async function syncDbToDriveImpl(driveFileId) {
   if (!driveFileId) return false;
-  await refreshAccessTokenIfNeeded();
+  // Use existing token; skip silent refresh to avoid COOP issues
   try {
     const blob = new Blob([await exportDb()], { type: 'application/x-sqlite3' });
     await gapi.client.drive.files.update({
@@ -80,12 +70,23 @@ async function syncDbToDriveImpl(driveFileId) {
     console.error('Error syncing to Google Drive:', error);
     if (error.status === 401 && window.tokenClient) {
       try {
-        window.tokenClient.requestAccessToken({ prompt: 'consent' });
-        await refreshAccessTokenIfNeeded();
+        // Prompt for consent again and get new token
+        const retryResp = await new Promise((resolve, reject) => {
+          window.tokenClient.requestAccessToken({
+            prompt: 'consent',
+            callback: (resp) => {
+              if (resp.error) return reject(resp.error);
+              resolve(resp);
+            }
+          });
+        });
+        // Set new token
+        gapi.client.setToken(retryResp);
+        // Retry the update
         await gapi.client.drive.files.update({
           fileId: driveFileId,
           uploadType: 'media',
-          media: { mimeType: 'application/x-sqlite3', body: new Blob([await exportDb()], { type: 'application/x-sqlite3' }) }
+          media: { type: 'application/x-sqlite3', body: new Blob([await exportDb()], { type: 'application/x-sqlite3' }) }
         });
         return true;
       } catch (retryError) {
@@ -96,5 +97,5 @@ async function syncDbToDriveImpl(driveFileId) {
   }
 }
 
-// Debounced sync for event handlers (2s delay)
-export const syncDbToDrive = debounce(syncDbToDriveImpl, 2000);
+// Sync database to Google Drive (manual invocation)
+export const syncDbToDrive = syncDbToDriveImpl;
