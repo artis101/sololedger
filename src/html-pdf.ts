@@ -71,8 +71,9 @@ export function createInvoiceHTML(
   const containerDiv = document.createElement("div");
   containerDiv.id = "invoice-html-template";
   containerDiv.className = "bg-white p-8";
+  // Container style with improved text rendering for better clarity
   containerDiv.style.cssText =
-    "font-family: Roboto, Arial, sans-serif; position: fixed; left: -9999px; top: -9999px; width: 210mm; height: 297mm; box-sizing: border-box; font-size: 12px;";
+    "font-family: Arial, sans-serif; position: fixed; left: -9999px; top: -9999px; width: 595px; height: 842px; padding: 30px; margin: 0; box-sizing: border-box; font-size: 11px; display: flex; flex-direction: column; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;";
 
   // Get currency symbol from settings or default to Euro
   const currencySymbol = businessSettings?.currency
@@ -323,57 +324,61 @@ export async function buildHtmlPdf(
     // Wait a moment for styles to apply
     await new Promise((resolve) => setTimeout(resolve, 100));
 
-    // Configure canvas settings based on mode
+    // FIXED APPROACH: Use higher DPI to prevent blurry text, while maintaining proper zoom
     const canvasSettings = {
-      scale: previewMode ? 1.5 : 3, // Lower scale for preview to improve performance
+      scale: 2, // Higher scale for better text quality, without affecting zoom
       useCORS: true,
       logging: false,
       allowTaint: true,
       backgroundColor: "#ffffff",
-      width: 595, // A4 width in points at 72 DPI
-      height: 842, // A4 height in points at 72 DPI
-      scrollX: 0,
-      scrollY: 0,
-      x: 0,
-      y: 0,
-      // Make PDF look better
+      width: 595, // A4 width in points (72 DPI)
+      height: 842, // A4 height in points (72 DPI)
+      // Improve text rendering quality
+      imageTimeout: 0,
       letterRendering: true,
-      foreignObjectRendering: false, // Use the slower but more accurate canvas rendering
     };
 
+    // Make sure the div is fully rendered before conversion
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
     // Convert HTML to canvas with appropriate quality
     const canvas = await html2canvas(invoiceDiv, canvasSettings);
 
     // Remove the temporary div
     document.body.removeChild(invoiceDiv);
 
-    // Create PDF document
+    // Create PDF document with A4 dimensions
     const pdfDoc = await PDFDocument.create();
-    const page = pdfDoc.addPage([595, 842]); // A4 size in points at 72 DPI
+    const page = pdfDoc.addPage([595, 842]); // A4 size
 
-    // Convert canvas to image with appropriate quality based on mode
-    const imageQuality = previewMode ? 0.85 : 1.0;
-    const imgFormat = previewMode ? "image/png" : "image/jpeg"; // PNG for preview for better text clarity
-    const imgData = canvas.toDataURL(imgFormat, imageQuality);
-
-    // Remove the data URL prefix to get just the base64 data
-    const base64Data = imgData.replace(/^data:image\/(png|jpeg);base64,/, "");
-
-    // Embed the image in the PDF using the appropriate method
+    // Create a variable for the image that will be in scope for the whole function
     let image;
-    if (previewMode) {
-      const pngImageBytes = Uint8Array.from(atob(base64Data), (c) =>
-        c.charCodeAt(0)
-      );
+    
+    try {
+      // Always use PNG for better text clarity - important for crisp text
+      const imgData = canvas.toDataURL("image/png", 1.0);
+      const base64Data = imgData.replace(/^data:image\/png;base64,/, "");
+      const pngImageBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+      
+      // Embed PNG for maximum text clarity
       image = await pdfDoc.embedPng(pngImageBytes);
-    } else {
-      const jpgImageBytes = Uint8Array.from(atob(base64Data), (c) =>
-        c.charCodeAt(0)
-      );
-      image = await pdfDoc.embedJpg(jpgImageBytes);
+    } catch (error) {
+      console.error("Error creating PDF image from PNG:", error);
+      
+      // Fallback to JPEG if PNG fails, but with high quality setting
+      try {
+        // Use highest JPEG quality to maintain text clarity
+        const imgData = canvas.toDataURL("image/jpeg", 1.0);
+        const base64Data = imgData.replace(/^data:image\/jpeg;base64,/, "");
+        const jpgImageBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+        image = await pdfDoc.embedJpg(jpgImageBytes);
+      } catch (fallbackError) {
+        console.error("Both PNG and JPEG embedding failed:", fallbackError);
+        throw new Error("Failed to create PDF: Image embedding failed");
+      }
     }
 
-    // Draw the image on the PDF using the full page
+    // Draw the image on PDF page - direct 1:1 mapping
     page.drawImage(image, {
       x: 0,
       y: 0,

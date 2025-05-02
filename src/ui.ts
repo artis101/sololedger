@@ -312,8 +312,9 @@ function setupInvoiceActionPopovers(): void {
   document.querySelectorAll(".invoice-actions-btn").forEach((button) => {
     button.addEventListener("click", (e: Event) => {
       e.stopPropagation();
-      const target = e.target as HTMLElement;
-      const container = target.closest("[data-invoice-id]") as HTMLElement;
+      // Use currentTarget instead of target to handle clicks on the SVG or other child elements
+      const buttonElement = e.currentTarget as HTMLElement;
+      const container = buttonElement.closest("[data-invoice-id]") as HTMLElement;
       if (!container) return;
 
       const invoiceId = container.dataset.invoiceId;
@@ -338,11 +339,17 @@ function setupInvoiceActionPopovers(): void {
   document.querySelectorAll(".invoice-send-btn").forEach((button) => {
     if (!(button as HTMLButtonElement).disabled) {
       button.addEventListener("click", async (e: Event) => {
-        const target = e.target as HTMLElement;
-        const buttonElement = target.closest("[data-id]") as HTMLElement;
+        e.stopPropagation();
+        // Use currentTarget to get the button that was clicked, not a child element
+        const buttonElement = e.currentTarget as HTMLElement;
         if (!buttonElement) return;
 
         const invoiceId = Number(buttonElement.dataset.id);
+        if (!invoiceId) {
+          console.error("No invoice ID found on button", buttonElement);
+          return;
+        }
+        
         try {
           await markInvoiceSent(invoiceId);
 

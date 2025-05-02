@@ -100,12 +100,15 @@ export function initInvoiceHandlers(): void {
     // Reset to form tab view
     ($('#invoice-form-tab') as HTMLElement).click();
 
-    // Generate and set the next invoice number
+    // Generate and set the next invoice number based on business settings
     try {
       const nextNumber = await generateNextInvoiceNumber();
       const numberElement = ($('#invoice-form') as HTMLFormElement).elements.namedItem('number');
       if (numberElement) {
         (numberElement as HTMLInputElement).value = nextNumber;
+        // Make sure the field is updated in the DOM
+        const event = new Event('input', { bubbles: true });
+        (numberElement as HTMLInputElement).dispatchEvent(event);
       }
     } catch (error) {
       console.error("Error generating next invoice number:", error);
@@ -147,10 +150,23 @@ export function initInvoiceHandlers(): void {
 
   // Edit/Delete/Toggle Paid from table
   $('#invoice-table').addEventListener('click', async (e: Event) => {
+    // Get the target element that was clicked
     const target = e.target as HTMLElement;
     
-    if (target.matches('.view-pdf')) {
-      const id = Number(target.dataset.id);
+    // Find the closest element with a relevant class
+    // This handles clicks on child elements within buttons (like icons/text)
+    const actionElement = target.closest('.view-pdf, .toggle-paid, .toggle-locked, .edit-invoice, .delete-invoice');
+    
+    if (!actionElement) return; // No relevant action element was clicked
+    
+    // Extract the ID from the action element
+    const id = Number(actionElement.getAttribute('data-id'));
+    if (!id) {
+      console.error('No ID found on action element', actionElement);
+      return;
+    }
+    
+    if (actionElement.classList.contains('view-pdf')) {
       const invoice = await getInvoiceWithItems(id);
       if (invoice) {
         // Get business settings to include in the PDF
@@ -159,8 +175,7 @@ export function initInvoiceHandlers(): void {
         // Generate and open PDF using HTML renderer
         buildHtmlPdf(invoice, { businessSettings });
       }
-    } else if (target.matches('.toggle-paid')) {
-      const id = Number(target.dataset.id);
+    } else if (actionElement.classList.contains('toggle-paid')) {
       try {
         // Toggle the paid status
         const result = await toggleInvoicePaid(id);
@@ -182,8 +197,7 @@ export function initInvoiceHandlers(): void {
         console.error('Error toggling invoice paid status:', error);
         alert(`Error updating invoice status: ${error.message}`);
       }
-    } else if (target.matches('.toggle-locked')) {
-      const id = Number(target.dataset.id);
+    } else if (actionElement.classList.contains('toggle-locked')) {
       try {
         // Toggle the locked status
         const result = await toggleInvoiceLocked(id);
@@ -205,8 +219,8 @@ export function initInvoiceHandlers(): void {
         console.error('Error toggling invoice locked status:', error);
         alert(`Error updating invoice lock status: ${error.message}`);
       }
-    } else if (target.matches('.edit-invoice')) {
-      const id = Number(target.dataset.id);
+    } else if (actionElement.classList.contains('edit-invoice')) {
+      // ID already extracted above
       const invoice = await getInvoiceWithItems(id);
       if (invoice) {
         // Check if invoice is locked and show warning
@@ -315,8 +329,8 @@ export function initInvoiceHandlers(): void {
         toggle($('#invoice-modal'), true);
         updateInvoicePreview();
       }
-    } else if (target.matches('.delete-invoice')) {
-      const id = Number(target.dataset.id);
+    } else if (actionElement.classList.contains('delete-invoice')) {
+      // ID already extracted above
       if (confirm('Are you sure you want to delete this invoice?')) {
         try {
           await deleteInvoice(id);
@@ -372,6 +386,20 @@ export function initInvoiceHandlers(): void {
         alert('Please enter an invoice number.');
         return;
       }
+      
+      // Validate client selection
+      const clientId = fd.get('clientId');
+      if (!clientId || Number(clientId) <= 0) {
+        alert('Please select a client for this invoice.');
+        return;
+      }
+      
+      // Validate date
+      const date = fd.get('date');
+      if (!date) {
+        alert('Please enter a valid date for this invoice.');
+        return;
+      }
 
       // Get the paid status from the checkbox (0 if not checked, 1 if checked)
       const isPaid = ($('#invoice-paid') as HTMLInputElement).checked ? 1 : 0;
@@ -381,7 +409,7 @@ export function initInvoiceHandlers(): void {
         id: invoiceId,
         number: invoiceNumber, 
         date: fd.get('date') as string, 
-        clientId: Number(fd.get('clientId')), 
+        client_id: Number(fd.get('clientId')), // Changed from clientId to client_id to match the database field
         total, 
         paid: isPaid, 
         locked: isLocked
@@ -431,6 +459,20 @@ export function initInvoiceHandlers(): void {
         alert('Please enter an invoice number.');
         return;
       }
+      
+      // Validate client selection
+      const clientId = fd.get('clientId');
+      if (!clientId || Number(clientId) <= 0) {
+        alert('Please select a client for this invoice.');
+        return;
+      }
+      
+      // Validate date
+      const date = fd.get('date');
+      if (!date) {
+        alert('Please enter a valid date for this invoice.');
+        return;
+      }
 
       // Get the paid status from the checkbox (0 if not checked, 1 if checked)
       const isPaid = ($('#invoice-paid') as HTMLInputElement).checked ? 1 : 0;
@@ -440,7 +482,7 @@ export function initInvoiceHandlers(): void {
         id: invoiceId,
         number: invoiceNumber, 
         date: fd.get('date') as string, 
-        clientId: Number(fd.get('clientId')), 
+        client_id: Number(fd.get('clientId')), // Changed from clientId to client_id to match the database field
         total, 
         paid: isPaid, 
         locked: isLocked

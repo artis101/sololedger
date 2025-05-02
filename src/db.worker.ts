@@ -294,9 +294,20 @@ function saveInvoice(
   items: InvoiceItem[]
 ): number {
   return withTransaction(() => {
+    // Validate required fields
+    if (!header.number) {
+      throw new Error("Invoice number is required");
+    }
+    if (!header.date) {
+      throw new Error("Invoice date is required");
+    }
+    if (!header.client_id || header.client_id <= 0) {
+      throw new Error("Valid client selection is required");
+    }
+    
     // Calculate the total from items to ensure consistency
     const calculatedTotal = items.reduce(
-      (sum, item) => sum + item.qty * item.unit,
+      (sum, item) => sum + (item.qty || 0) * (item.unit || 0),
       0
     );
 
@@ -376,9 +387,14 @@ function saveInvoice(
       "INSERT INTO invoice_items (invoice_id,description,qty,unit) VALUES (?,?,?,?)"
     );
     try {
-      items.forEach((it) =>
-        itemStmt.run([invoiceId, it.description, it.qty, it.unit])
-      );
+      items.forEach((it) => {
+        // Validate and ensure values are not undefined
+        const description = it.description || '';
+        const qty = it.qty !== undefined && it.qty !== null ? it.qty : 0;
+        const unit = it.unit !== undefined && it.unit !== null ? it.unit : 0;
+        
+        itemStmt.run([invoiceId, description, qty, unit]);
+      });
     } finally {
       itemStmt.free();
     }
@@ -754,8 +770,11 @@ function generateNextInvoiceNumber(): string {
     const now = new Date();
     const currentDateStr = now.toISOString().split("T")[0]; // YYYY-MM-DD
 
-    // Only reset if we have a last reset date
-    if (lastReset) {
+    // Reset logic - for both with and without last reset date
+    if (!lastReset) {
+      // No last reset date, set it now
+      lastReset = currentDateStr;
+    } else {
       const lastResetDate = new Date(lastReset);
 
       if (resetOption === "yearly") {
@@ -776,9 +795,6 @@ function generateNextInvoiceNumber(): string {
         }
       }
       // If 'never', we don't reset the counter
-    } else {
-      // No last reset date, set it now
-      lastReset = currentDateStr;
     }
 
     // Format the variables
@@ -789,11 +805,11 @@ function generateNextInvoiceNumber(): string {
 
     // Parse the format string
     let nextNumber = format
-      .replace("{YEAR}", year)
-      .replace("{YY}", shortYear)
-      .replace("{MONTH}", month)
-      .replace("{SEQ}", paddedCounter)
-      .replace("{PREFIX}", prefix);
+      .replace(/{YEAR}/g, year)
+      .replace(/{YY}/g, shortYear)
+      .replace(/{MONTH}/g, month)
+      .replace(/{SEQ}/g, paddedCounter)
+      .replace(/{PREFIX}/g, prefix);
 
     // Update the counter for next time
     const stmt = db.prepare(

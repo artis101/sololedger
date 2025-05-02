@@ -206,12 +206,23 @@ async function loadBusinessSettings(): Promise<void> {
     if (settings) {
       // Populate form fields with settings values
       businessSettingsFields.forEach(field => {
-        // Convert camelCase to kebab-case for HTML IDs
-        const elementId = field.replace(/([A-Z])/g, "-$1").toLowerCase();
+        // Handle different naming conventions for HTML IDs
+        let elementId: string;
+        
+        // For snake_case fields (invoice_number_*), convert to kebab-case
+        if (field.includes('_')) {
+          elementId = field.replace(/_/g, '-');
+        } else {
+          // For camelCase fields, convert to kebab-case
+          elementId = field.replace(/([A-Z])/g, "-$1").toLowerCase();
+        }
+        
         const el = $(`#${elementId}`) as HTMLInputElement;
 
         if (el && settings[field] !== null && settings[field] !== undefined) {
           el.value = settings[field];
+        } else if (!el) {
+          console.warn(`Element with ID '${elementId}' not found for field '${field}'`);
         }
       });
 
@@ -233,6 +244,9 @@ async function loadBusinessSettings(): Promise<void> {
         }
         lastUpdatedEl.textContent = `Last updated: ${formattedDate}`;
       }
+      
+      // Update the preview to reflect loaded settings
+      setupInvoiceNumberPreview();
     }
   } catch (error) {
     console.error("Error loading business settings:", error);
@@ -256,18 +270,34 @@ async function handleSaveSettings(event: Event): Promise<void> {
     const settings: Record<string, any> = {};
 
     businessSettingsFields.forEach(field => {
-      // Convert camelCase to kebab-case for HTML IDs
-      const elementId = field.replace(/([A-Z])/g, "-$1").toLowerCase();
+      // Handle different naming conventions for HTML IDs
+      let elementId: string;
+      
+      // For snake_case fields (invoice_number_*), convert to kebab-case
+      if (field.includes('_')) {
+        elementId = field.replace(/_/g, '-');
+      } else {
+        // For camelCase fields, convert to kebab-case
+        elementId = field.replace(/([A-Z])/g, "-$1").toLowerCase();
+      }
+      
       const el = $(`#${elementId}`) as HTMLInputElement;
 
       if (el) {
         settings[field] = el.value || null;
 
-        // Convert taxRate to number if it exists
+        // Convert numeric fields to numbers
         if (field === "taxRate" && settings[field]) {
           settings[field] = parseFloat(settings[field]);
         }
+        if (field === "invoice_number_counter" && settings[field]) {
+          settings[field] = parseInt(settings[field], 10);
+        }
+        if (field === "invoice_number_padding" && settings[field]) {
+          settings[field] = parseInt(settings[field], 10);
+        }
       } else {
+        console.warn(`Element with ID '${elementId}' not found for field '${field}'`);
         settings[field] = null;
       }
     });
@@ -305,13 +335,23 @@ async function handleSaveSettings(event: Event): Promise<void> {
 
 // Set up the live preview for invoice number format
 function setupInvoiceNumberPreview(): void {
-  // Get all the invoice number related fields
+  // Get all the invoice number related fields using the kebab-case IDs
   const formatField = $('#invoice-number-format') as HTMLInputElement;
   const prefixField = $('#invoice-number-prefix') as HTMLInputElement;
   const paddingField = $('#invoice-number-padding') as HTMLInputElement;
   const counterField = $('#invoice-number-counter') as HTMLInputElement;
   const resetField = $('#invoice-number-reset') as HTMLInputElement;
   const previewEl = $('#invoice-number-preview');
+
+  if (!formatField || !prefixField || !paddingField || !counterField || !resetField) {
+    console.warn("Some invoice number fields couldn't be found:", {
+      formatField: !!formatField,
+      prefixField: !!prefixField,
+      paddingField: !!paddingField,
+      counterField: !!counterField,
+      resetField: !!resetField
+    });
+  }
 
   // Function to update the preview
   const updatePreview = async (): Promise<void> => {
@@ -323,21 +363,21 @@ function setupInvoiceNumberPreview(): void {
       const shortYear = year.slice(2);
       const month = (now.getMonth() + 1).toString().padStart(2, '0');
 
-      const format = formatField.value || 'INV-{YEAR}-{SEQ}';
-      const prefix = prefixField.value || '';
-      const padding = parseInt(paddingField.value) || 4;
-      let counter = parseInt(counterField.value) || 1;
+      const format = formatField?.value || 'INV-{YEAR}-{SEQ}';
+      const prefix = prefixField?.value || '';
+      const padding = parseInt(paddingField?.value || '4');
+      let counter = parseInt(counterField?.value || '1');
 
       // Format the counter with padding
       const paddedCounter = counter.toString().padStart(padding, '0');
 
-      // Parse the format string
+      // Parse the format string - use global replace to handle multiple occurrences
       let previewNumber = format
-        .replace('{YEAR}', year)
-        .replace('{YY}', shortYear)
-        .replace('{MONTH}', month)
-        .replace('{SEQ}', paddedCounter)
-        .replace('{PREFIX}', prefix);
+        .replace(/{YEAR}/g, year)
+        .replace(/{YY}/g, shortYear)
+        .replace(/{MONTH}/g, month)
+        .replace(/{SEQ}/g, paddedCounter)
+        .replace(/{PREFIX}/g, prefix);
 
       // Update the preview element
       if (previewEl) {
