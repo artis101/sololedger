@@ -1,5 +1,6 @@
-import { saveClient, getClient, deleteClient } from '../db.js';
+import { saveClient, getClient, deleteClient, listClients, listInvoices } from '../db.js';
 import { renderClients, toggle, $ } from '../ui.js';
+import { updateDashboardStats } from './tabs.js';
 
 // Initialize client-related event handlers
 export function initClientHandlers() {
@@ -70,7 +71,13 @@ export function initClientHandlers() {
         email: fd.get('email'),
         address: fd.get('address'),
       });
+      
+      // Update both clients and dashboard
+      const clients = await listClients();
+      const invoices = await listInvoices();
       await renderClients();
+      await updateDashboardStats(clients, invoices);
+      
       toggle($('#client-modal'), false);
       e.target.reset();
     } catch (error) {

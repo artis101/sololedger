@@ -1,7 +1,8 @@
-import { saveInvoice, getInvoiceWithItems, deleteInvoice, listClients } from '../db.js';
+import { saveInvoice, getInvoiceWithItems, deleteInvoice, listClients, listInvoices } from '../db.js';
 import { renderInvoices, toggle, $, addItemRow } from '../ui.js';
 import { buildPdf } from '../pdf.js';
 import { updateInvoicePreview } from './preview.js';
+import { updateDashboardStats } from './tabs.js';
 
 // Initialize invoice-related event handlers
 export function initInvoiceHandlers() {
@@ -112,7 +113,13 @@ export function initInvoiceHandlers() {
       const header = { id: fd.get('invoiceId')?Number(fd.get('invoiceId')):null,
         number: fd.get('number'), date: fd.get('date'), clientId: Number(fd.get('clientId')), total };
       await saveInvoice(header, items);
+      
+      // Update invoices and dashboard
+      const clients = await listClients();
+      const invoices = await listInvoices();
       await renderInvoices();
+      await updateDashboardStats(clients, invoices);
+      
       toggle($('#invoice-modal'), false);
       form.reset(); $('#items-table tbody').innerHTML = '';
     } catch (error) {
@@ -137,7 +144,13 @@ export function initInvoiceHandlers() {
       const header = { id: fd.get('invoiceId')?Number(fd.get('invoiceId')):null,
         number: fd.get('number'), date: fd.get('date'), clientId: Number(fd.get('clientId')), total };
       const saved = await saveInvoice(header, items);
+      
+      // Update invoices and dashboard
+      const clients = await listClients();
+      const invoices = await listInvoices();
       await renderInvoices();
+      await updateDashboardStats(clients, invoices);
+      
       const full = await getInvoiceWithItems(saved);
       buildPdf(full);
       toggle($('#invoice-modal'), false);

@@ -9,12 +9,70 @@
   </head>
   <body class="bg-gray-50 p-4">
     <main id="app" class="max-w-5xl mx-auto">
-      <header class="flex items-center justify-between mb-6">
-        <h1 class="text-2xl font-bold">SoloLedger</h1>
+      <header class="flex flex-col mb-6">
+        <div class="flex items-center justify-between mb-4">
+          <h1 class="text-2xl font-bold">SoloLedger</h1>
+        </div>
+        
+        <!-- Tab Navigation -->
+        <nav class="flex border-b border-gray-300">
+          <button id="dashboard-tab" class="tab-button tab-active px-4 py-2 font-medium">Dashboard</button>
+          <button id="clients-tab" class="tab-button px-4 py-2 font-medium">Clients</button>
+          <button id="invoices-tab" class="tab-button px-4 py-2 font-medium">Invoices</button>
+          <button id="settings-tab" class="tab-button px-4 py-2 font-medium">Settings</button>
+        </nav>
       </header>
 
+      <!-- DASHBOARD -------------------------------------------------->
+      <section id="dashboard-page" class="tab-content mb-10">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div class="bg-white p-4 rounded-lg shadow">
+            <h3 class="font-medium mb-2">Quick Stats</h3>
+            <div class="flex justify-between items-center">
+              <div>
+                <p class="text-sm text-gray-600">Total Clients</p>
+                <p id="client-count" class="text-xl font-semibold">0</p>
+              </div>
+              <div>
+                <p class="text-sm text-gray-600">Total Invoices</p>
+                <p id="invoice-count" class="text-xl font-semibold">0</p>
+              </div>
+              <div>
+                <p class="text-sm text-gray-600">Total Revenue</p>
+                <p id="total-revenue" class="text-xl font-semibold">€0.00</p>
+              </div>
+            </div>
+          </div>
+          <div class="bg-white p-4 rounded-lg shadow">
+            <h3 class="font-medium mb-2">Recent Activity</h3>
+            <ul id="recent-activity" class="text-sm space-y-2">
+              <li class="text-gray-500">No recent activity</li>
+            </ul>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 gap-6">
+          <div class="bg-white p-4 rounded-lg shadow">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="font-medium">Recent Invoices</h3>
+              <a href="#" id="view-all-invoices" class="text-blue-600 text-sm">View All</a>
+            </div>
+            <table class="min-w-full">
+              <thead class="bg-gray-100 text-left text-sm">
+                <tr>
+                  <th class="px-3 py-2">#</th>
+                  <th class="px-3 py-2">Date</th>
+                  <th class="px-3 py-2">Client</th>
+                  <th class="px-3 py-2 text-right">Total (€)</th>
+                </tr>
+              </thead>
+              <tbody id="recent-invoices" class="text-sm"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
       <!-- CLIENTS ---------------------------------------------------->
-      <section class="mb-10">
+      <section id="clients-page" class="tab-content mb-10 hidden">
         <div class="flex items-center justify-between mb-2">
           <h2 class="text-xl font-semibold">Clients</h2>
           <button
@@ -41,7 +99,7 @@
       </section>
 
       <!-- INVOICES --------------------------------------------------->
-      <section>
+      <section id="invoices-page" class="tab-content hidden">
         <div class="flex items-center justify-between mb-2">
           <h2 class="text-xl font-semibold">Invoices</h2>
           <button
@@ -67,6 +125,36 @@
           </thead>
           <tbody id="invoice-rows"></tbody>
         </table>
+      </section>
+      
+      <!-- SETTINGS --------------------------------------------------->
+      <section id="settings-page" class="tab-content hidden">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xl font-semibold">Settings</h2>
+        </div>
+        <div class="bg-white p-6 rounded-lg shadow">
+          <h3 class="font-medium mb-4">App Settings</h3>
+          
+          <div class="grid grid-cols-1 gap-4">
+            <div>
+              <h4 class="text-sm font-medium mb-1">Data Backup & Export</h4>
+              <div class="flex gap-2">
+                <button id="export-data-btn" class="px-3 py-1 text-sm rounded bg-blue-600 text-white shadow">
+                  Export Data
+                </button>
+                <button id="import-data-btn" class="px-3 py-1 text-sm rounded bg-gray-600 text-white shadow">
+                  Import Data
+                </button>
+              </div>
+            </div>
+            
+            <div>
+              <h4 class="text-sm font-medium mb-1">App Information</h4>
+              <p class="text-sm text-gray-600">SoloLedger - 100% client side invoicing app</p>
+              <p class="text-sm text-gray-600">Version: 1.0.0</p>
+            </div>
+          </div>
+        </div>
       </section>
 
       <!-- MODALS ===================================================== -->

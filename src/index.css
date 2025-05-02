@@ -1,3 +1,26 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Tab Navigation Styles */
+@layer components {
+  .tab-button {
+    @apply relative text-gray-600 hover:text-blue-600 transition-colors border-b-2 border-transparent;
+  }
+
+  .tab-button.tab-active {
+    @apply text-blue-600 border-blue-600;
+  }
+
+  .tab-content {
+    @apply transition-opacity duration-300;
+  }
+
+  .tab-content.hidden {
+    @apply opacity-0;
+  }
+
+  .tab-content:not(.hidden) {
+    @apply opacity-100;
+  }
+}
