@@ -137,6 +137,18 @@ export function createInvoiceHTML(invoice, businessSettings) {
             <p class="text-base text-gray-600 whitespace-pre-line">${businessSettings.invoiceNote}</p>
           </div>
           ` : ''}
+          
+          <!-- Community Edition Badge -->
+          <div class="mt-8 pt-4 text-center opacity-60">
+            <p class="text-[9px] text-gray-500">
+              <span class="inline-flex items-center gap-0.5">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-2 w-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M10 2a8 8 0 100 16 8 8 0 000-16zm0 15a7 7 0 100-14 7 7 0 000 14zm-4-5a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1z" clip-rule="evenodd" />
+                </svg>
+                Generated with SoloLedger Community Edition • AGPL-3.0
+              </span>
+            </p>
+          </div>
         </div>
       </div>
     </div>`;
