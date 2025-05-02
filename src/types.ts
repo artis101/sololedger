@@ -4,6 +4,7 @@ export interface Client {
   name: string;
   email?: string;
   address?: string;
+  taxId?: string;
 }
 
 export interface Invoice {
@@ -112,7 +113,7 @@ export interface InvoiceWithItems {
 }
 
 // Array representation of database records
-export type ClientRow = [number, string, string | null, string | null]; // [id, name, email, address]
+export type ClientRow = [number, string, string | null, string | null, string | null]; // [id, name, email, address, taxId]
 export type InvoiceRow = [
   number,
   string,

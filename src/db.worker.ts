@@ -76,6 +76,13 @@ const migrations: Migration[] = [
       /* initial schema created in initSql */
     },
   },
+  {
+    version: 2,
+    up: (db: SqlDatabase) => {
+      // Add tax_id column to clients table
+      db.run(`ALTER TABLE clients ADD COLUMN tax_id TEXT;`);
+    },
+  },
 ];
 
 function runMigrations(): void {
@@ -189,7 +196,7 @@ function withTransaction<T>(fn: (db: SqlDatabase) => T): T {
 
 function listClients(): any[] {
   const res = db.exec(
-    "SELECT id, name, email, address FROM clients ORDER BY name"
+    "SELECT id, name, email, address, tax_id FROM clients ORDER BY name"
   );
   return res.length ? res[0].values : [];
 }
@@ -205,13 +212,13 @@ function listInvoices(): any[] {
 
 function getClient(id: number): Client | null {
   const stmt = db.prepare(
-    "SELECT id, name, email, address FROM clients WHERE id = ?"
+    "SELECT id, name, email, address, tax_id FROM clients WHERE id = ?"
   );
   try {
     stmt.bind([id]);
     if (!stmt.step()) return null;
     const row = stmt.get();
-    return { id: row[0], name: row[1], email: row[2], address: row[3] };
+    return { id: row[0], name: row[1], email: row[2], address: row[3], taxId: row[4] };
   } finally {
     stmt.free();
   }
@@ -244,19 +251,19 @@ function saveClient(obj: Client): number {
   return withTransaction(() => {
     if (obj.id) {
       const stmt = db.prepare(
-        "UPDATE clients SET name=?, email=?, address=? WHERE id=?"
+        "UPDATE clients SET name=?, email=?, address=?, tax_id=? WHERE id=?"
       );
       try {
-        stmt.run([obj.name, obj.email, obj.address, obj.id]);
+        stmt.run([obj.name, obj.email, obj.address, obj.taxId, obj.id]);
       } finally {
         stmt.free();
       }
     } else {
       const stmt = db.prepare(
-        "INSERT INTO clients (name,email,address) VALUES (?,?,?)"
+        "INSERT INTO clients (name,email,address,tax_id) VALUES (?,?,?,?)"
       );
       try {
-        stmt.run([obj.name, obj.email, obj.address]);
+        stmt.run([obj.name, obj.email, obj.address, obj.taxId]);
       } finally {
         stmt.free();
       }
@@ -408,6 +415,7 @@ interface InvoiceDetails {
     number: string;
     date: string;
     client: string;
+    clientTaxId: string | null;
     total: number;
     paid: number;
     locked: number;
@@ -424,7 +432,7 @@ interface InvoiceDetails {
 
 function getInvoiceWithItems(id: number): InvoiceDetails {
   const headStmt = db.prepare(
-    `SELECT inv.number, inv.date, c.name, inv.total, inv.paid, inv.locked,
+    `SELECT inv.number, inv.date, c.name, c.tax_id, inv.total, inv.paid, inv.locked,
      inv.locked_at, inv.paid_at, inv.sent_at 
      FROM invoices inv JOIN clients c ON c.id=inv.client_id WHERE inv.id=?`
   );
@@ -437,12 +445,13 @@ function getInvoiceWithItems(id: number): InvoiceDetails {
       number: h[0],
       date: h[1],
       client: h[2],
-      total: h[3],
-      paid: h[4],
-      locked: h[5],
-      lockedAt: h[6],
-      paidAt: h[7],
-      sentAt: h[8],
+      clientTaxId: h[3],
+      total: h[4],
+      paid: h[5],
+      locked: h[6],
+      lockedAt: h[7],
+      paidAt: h[8],
+      sentAt: h[9],
     };
   } finally {
     headStmt.free();

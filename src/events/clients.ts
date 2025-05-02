@@ -29,6 +29,7 @@ export function initClientHandlers(): void {
         const form = $('#client-form') as HTMLFormElement;
         (form.elements.namedItem('name') as HTMLInputElement).value = client.name;
         (form.elements.namedItem('email') as HTMLInputElement).value = client.email || '';
+        (form.elements.namedItem('taxId') as HTMLInputElement).value = client.taxId || '';
         (form.elements.namedItem('address') as HTMLTextAreaElement).value = client.address || '';
         $('#delete-client-btn').classList.remove('hidden');
         toggle($('#client-modal'), true);
@@ -74,6 +75,7 @@ export function initClientHandlers(): void {
         id: clientId ? Number(clientId) : undefined,
         name: fd.get('name') as string,
         email: fd.get('email') as string,
+        taxId: fd.get('taxId') as string,
         address: fd.get('address') as string,
       };
 

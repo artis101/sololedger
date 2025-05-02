@@ -12,6 +12,7 @@ interface InvoiceHeader {
   number: string;
   date: string;
   client: string;
+  clientTaxId?: string | null;
   total: number;
   paid?: number;
   locked?: number;
@@ -185,6 +186,7 @@ export function createInvoiceHTML(
       <div class="mb-8 p-4 bg-gray-50 rounded" style="flex: 0 0 auto;">
         <h3 class="text-base font-semibold text-gray-700 mb-2">Bill To</h3>
         <p class="text-base">${invoice.header.client}</p>
+        ${invoice.header.clientTaxId ? `<p class="text-sm text-gray-600 mt-1">Tax ID: ${invoice.header.clientTaxId}</p>` : ''}
       </div>
       
       <!-- Main Content Area - Grows to Fill Space -->

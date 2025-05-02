@@ -39,6 +39,7 @@ export async function renderClients(): Promise<void> {
     tr.innerHTML = `
       <td class="px-3 py-2">${row[1]}</td>
       <td class="px-3 py-2">${row[2] ?? ""}</td>
+      <td class="px-3 py-2">${row[4] ?? ""}</td>
       <td class="px-3 py-2">${row[3] ?? ""}</td>
       <td class="px-3 py-2 text-right">
         <button data-id="${
