@@ -5,18 +5,24 @@ import initSqlJs from "sql.js";
 const IDB_DB_NAME = "sololedger";
 const IDB_STORE_NAME = "sqlite";
 
+// Cache IndexedDB connection promise for reuse
+let idbPromise;
+
 function openIdb() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(IDB_DB_NAME, 1);
-    req.onupgradeneeded = () => {
-      const dbid = req.result;
-      if (!dbid.objectStoreNames.contains(IDB_STORE_NAME)) {
-        dbid.createObjectStore(IDB_STORE_NAME);
-      }
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
+  if (!idbPromise) {
+    idbPromise = new Promise((resolve, reject) => {
+      const req = indexedDB.open(IDB_DB_NAME, 1);
+      req.onupgradeneeded = () => {
+        const dbid = req.result;
+        if (!dbid.objectStoreNames.contains(IDB_STORE_NAME)) {
+          dbid.createObjectStore(IDB_STORE_NAME);
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  return idbPromise;
 }
 
 async function persistLocal() {
@@ -52,6 +58,31 @@ async function loadLocal() {
 // --------------------
 
 let SQL, db;
+
+// Schema migrations using PRAGMA user_version
+const migrations = [
+  {
+    version: 1,
+    up: (db) => {
+      // Initial schema creation is handled via CREATE TABLE IF NOT EXISTS above
+    },
+  },
+  // Future migrations: add { version: X, up: (db) => { ... } }
+];
+
+/**
+ * Apply pending migrations based on PRAGMA user_version
+ */
+function runMigrations() {
+  const result = db.exec("PRAGMA user_version");
+  const currentVersion = result[0]?.values[0][0] || 0;
+  for (const m of migrations) {
+    if (m.version > currentVersion) {
+      m.up(db);
+      db.run(`PRAGMA user_version = ${m.version}`);
+    }
+  }
+}
 
 export async function initSql() {
   try {
@@ -92,6 +123,9 @@ export async function initSql() {
       FOREIGN KEY (invoice_id) REFERENCES invoices(id)
     );`);
 
+    // Apply schema migrations based on PRAGMA user_version
+    runMigrations();
+
     return true;
   } catch (error) {
     console.error("Error initializing SQL database:", error);
@@ -102,61 +136,98 @@ export async function initSql() {
 export function loadDb(data) {
   db = new SQL.Database(data);
 }
+// Execute the given function within a transaction, committing on success and rolling back on error
+export function withTransaction(fn) {
+  db.run("BEGIN");
+  try {
+    const result = fn(db);
+    db.run("COMMIT");
+    return result;
+  } catch (err) {
+    db.run("ROLLBACK");
+    throw err;
+  }
+}
 
 export function saveClient(obj) {
-  if (obj.id) {
-    // Update existing client
-    const stmt = db.prepare(
-      "UPDATE clients SET name = ?, email = ?, address = ? WHERE id = ?"
-    );
-    stmt.run([obj.name, obj.email, obj.address, obj.id]);
-    stmt.free();
-  } else {
-    // Insert new client
-    const stmt = db.prepare(
-      "INSERT INTO clients (name,email,address) VALUES (?,?,?)"
-    );
-    stmt.run([obj.name, obj.email, obj.address]);
-    stmt.free();
-  }
+  withTransaction(() => {
+    if (obj.id) {
+      // Update existing client
+      const stmt = db.prepare(
+        "UPDATE clients SET name = ?, email = ?, address = ? WHERE id = ?"
+      );
+      try {
+        stmt.run([obj.name, obj.email, obj.address, obj.id]);
+      } finally {
+        stmt.free();
+      }
+    } else {
+      // Insert new client
+      const stmt = db.prepare(
+        "INSERT INTO clients (name,email,address) VALUES (?,?,?)"
+      );
+      try {
+        stmt.run([obj.name, obj.email, obj.address]);
+      } finally {
+        stmt.free();
+      }
+    }
+  });
   // Persist changes locally
   persistLocal().catch((err) => console.error("persistLocal error:", err));
 }
 
 export function getClient(id) {
-  const result = db.exec(
-    `SELECT id, name, email, address FROM clients WHERE id = ${id}`
+  const stmt = db.prepare(
+    "SELECT id, name, email, address FROM clients WHERE id = ?"
   );
-  if (result.length === 0 || result[0].values.length === 0) {
-    return null;
+  try {
+    stmt.bind([id]);
+    if (!stmt.step()) {
+      return null;
+    }
+    const row = stmt.get();
+    return {
+      id: row[0],
+      name: row[1],
+      email: row[2],
+      address: row[3],
+    };
+  } finally {
+    stmt.free();
   }
-  const row = result[0].values[0];
-  return {
-    id: row[0],
-    name: row[1],
-    email: row[2],
-    address: row[3],
-  };
 }
 
 export function deleteClient(id) {
   // Check if client has invoices
-  const invoicesCheck = db.exec(
-    `SELECT COUNT(*) FROM invoices WHERE client_id = ${id}`
+  const countStmt = db.prepare(
+    "SELECT COUNT(*) FROM invoices WHERE client_id = ?"
   );
-  const count = invoicesCheck[0].values[0][0];
-
-  if (count > 0) {
-    throw new Error(
-      `Cannot delete client with ID ${id} because it has associated invoices.`
-    );
+  try {
+    countStmt.bind([id]);
+    let count = 0;
+    if (countStmt.step()) {
+      count = countStmt.get()[0];
+    }
+    if (count > 0) {
+      throw new Error(
+        `Cannot delete client with ID ${id} because it has associated invoices.`
+      );
+    }
+  } finally {
+    countStmt.free();
   }
 
-  const stmt = db.prepare("DELETE FROM clients WHERE id = ?");
-  stmt.run([id]);
-  stmt.free();
-  // Persist changes locally
-  persistLocal().catch((err) => console.error("persistLocal error:", err));
+  return withTransaction(() => {
+    const stmt = db.prepare("DELETE FROM clients WHERE id = ?");
+    try {
+      stmt.run([id]);
+    } finally {
+      stmt.free();
+    }
+    // Persist changes locally
+    persistLocal().catch((err) => console.error("persistLocal error:", err));
+  });
 }
 
 export function listClients() {
@@ -167,66 +238,93 @@ export function listClients() {
 }
 
 export function saveInvoice(header, items) {
-  let invoiceId;
+  return withTransaction(() => {
+    let invoiceId;
 
-  if (header.id) {
-    // Update existing invoice
-    const stmt = db.prepare(
-      "UPDATE invoices SET number = ?, date = ?, client_id = ?, total = ? WHERE id = ?"
+    if (header.id) {
+      // Update existing invoice
+      const stmt = db.prepare(
+        "UPDATE invoices SET number = ?, date = ?, client_id = ?, total = ? WHERE id = ?"
+      );
+      try {
+        stmt.run([
+          header.number,
+          header.date,
+          header.clientId,
+          header.total,
+          header.id,
+        ]);
+      } finally {
+        stmt.free();
+      }
+
+      // Delete existing items
+      const deleteStmt = db.prepare(
+        "DELETE FROM invoice_items WHERE invoice_id = ?"
+      );
+      try {
+        deleteStmt.run([header.id]);
+      } finally {
+        deleteStmt.free();
+      }
+
+      invoiceId = header.id;
+    } else {
+      // Insert new invoice
+      const stmt = db.prepare(
+        "INSERT INTO invoices (number,date,client_id,total) VALUES (?,?,?,?)"
+      );
+      try {
+        stmt.run([header.number, header.date, header.clientId, header.total]);
+      } finally {
+        stmt.free();
+      }
+      invoiceId = db.exec("SELECT last_insert_rowid() AS id")[0].values[0][0];
+    }
+
+    // Insert new items
+    const itemStmt = db.prepare(
+      "INSERT INTO invoice_items (invoice_id,description,qty,unit) VALUES (?,?,?,?)"
     );
-    stmt.run([
-      header.number,
-      header.date,
-      header.clientId,
-      header.total,
-      header.id,
-    ]);
-    stmt.free();
+    try {
+      for (const it of items) {
+        itemStmt.run([invoiceId, it.description, it.qty, it.unit]);
+      }
+    } finally {
+      itemStmt.free();
+    }
 
-    // Delete existing items
-    const deleteStmt = db.prepare(
-      "DELETE FROM invoice_items WHERE invoice_id = ?"
-    );
-    deleteStmt.run([header.id]);
-    deleteStmt.free();
-
-    invoiceId = header.id;
-  } else {
-    // Insert new invoice
-    const stmt = db.prepare(
-      "INSERT INTO invoices (number,date,client_id,total) VALUES (?,?,?,?)"
-    );
-    stmt.run([header.number, header.date, header.clientId, header.total]);
-    invoiceId = db.exec("SELECT last_insert_rowid() AS id")[0].values[0][0];
-  }
-
-  // Insert new items
-  const itemStmt = db.prepare(
-    "INSERT INTO invoice_items (invoice_id,description,qty,unit) VALUES (?,?,?,?)"
-  );
-  for (const it of items) {
-    itemStmt.run([invoiceId, it.description, it.qty, it.unit]);
-  }
-  itemStmt.free();
-  // Persist changes locally
-  persistLocal().catch((err) => console.error("persistLocal error:", err));
-  return invoiceId;
+    // Persist changes locally
+    persistLocal().catch((err) => console.error("persistLocal error:", err));
+    return invoiceId;
+  });
 }
 
 export function deleteInvoice(id) {
-  // First delete invoice items
-  const deleteItemsStmt = db.prepare(
-    "DELETE FROM invoice_items WHERE invoice_id = ?"
-  );
-  deleteItemsStmt.run([id]);
-  deleteItemsStmt.free();
+  return withTransaction(() => {
+    // First delete invoice items
+    const deleteItemsStmt = db.prepare(
+      "DELETE FROM invoice_items WHERE invoice_id = ?"
+    );
+    try {
+      deleteItemsStmt.run([id]);
+    } finally {
+      deleteItemsStmt.free();
+    }
 
-  // Then delete the invoice
-  const deleteInvoiceStmt = db.prepare("DELETE FROM invoices WHERE id = ?");
-  deleteInvoiceStmt.run([id]);
-  deleteInvoiceStmt.free();
-  // Persist changes locally
-  persistLocal().catch((err) => console.error("persistLocal error:", err));
+    // Then delete the invoice
+    const deleteInvoiceStmt = db.prepare(
+      "DELETE FROM invoices WHERE id = ?"
+    );
+    try {
+      deleteInvoiceStmt.run([id]);
+    } finally {
+      deleteInvoiceStmt.free();
+    }
+
+    // Persist changes locally
+    persistLocal().catch((err) => console.error("persistLocal error:", err));
+  });
 }
 
 export function listInvoices() {
@@ -238,25 +336,47 @@ export function listInvoices() {
 }
 
 export function getInvoiceWithItems(id) {
-  const head = db.exec(`SELECT inv.number, inv.date, c.name, inv.total
-                        FROM invoices inv JOIN clients c ON c.id=inv.client_id WHERE inv.id=${id}`)[0]
-    .values[0];
-  const itemsRows = db.exec(
-    `SELECT description, qty, unit FROM invoice_items WHERE invoice_id=${id}`
+  // Get invoice header
+  const headStmt = db.prepare(
+    "SELECT inv.number, inv.date, c.name, inv.total\n" +
+      "FROM invoices inv JOIN clients c ON c.id = inv.client_id WHERE inv.id = ?"
   );
-  const items = itemsRows.length
-    ? itemsRows[0].values.map((r) => ({
-        description: r[0],
-        qty: r[1],
-        unit: r[2],
-      }))
-    : [];
+  let headRow;
+  try {
+    headStmt.bind([id]);
+    if (!headStmt.step()) {
+      return null;
+    }
+    headRow = headStmt.get();
+  } finally {
+    headStmt.free();
+  }
+
+  // Get invoice items
+  const itemsStmt = db.prepare(
+    "SELECT description, qty, unit FROM invoice_items WHERE invoice_id = ?"
+  );
+  const items = [];
+  try {
+    itemsStmt.bind([id]);
+    while (itemsStmt.step()) {
+      const row = itemsStmt.get();
+      items.push({
+        description: row[0],
+        qty: row[1],
+        unit: row[2],
+      });
+    }
+  } finally {
+    itemsStmt.free();
+  }
+
   return {
     header: {
-      number: head[0],
-      date: head[1],
-      client: head[2],
-      total: head[3],
+      number: headRow[0],
+      date: headRow[1],
+      client: headRow[2],
+      total: headRow[3],
     },
     items,
   };
