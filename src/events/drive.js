@@ -30,6 +30,8 @@ export function initDriveHandlers() {
           gapi.client.setToken({ access_token: accessToken });
         },
       });
+      // Expose tokenClient globally for refresh operations
+      window.tokenClient = tokenClient;
       await new Promise((resolve) => {
         tokenClient.requestAccessToken({ prompt: 'consent' });
         const ck = setInterval(() => {

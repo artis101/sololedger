@@ -386,26 +386,82 @@ export async function exportDb() {
   return db.export();
 }
 
-export async function syncDbToDrive(driveFileId) {
-  if (!driveFileId) return;
+// Debounce utility to limit function calls
+function debounce(fn, ms) {
+  let timeout = null;
+  let pendingResolvers = [];
+  return function(...args) {
+    return new Promise((resolve) => {
+      pendingResolvers.push(resolve);
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+      timeout = setTimeout(async () => {
+        timeout = null;
+        const resolvers = pendingResolvers;
+        pendingResolvers = [];
+        let result;
+        try {
+          result = await fn(...args);
+        } catch (err) {
+          resolvers.forEach((r) => r(false));
+          return;
+        }
+        resolvers.forEach((r) => r(result));
+      }, ms);
+    });
+  };
+}
+
+// Refresh the access token silently if possible
+async function refreshAccessTokenIfNeeded() {
+  if (window.tokenClient) {
+    return new Promise((resolve) => {
+      window.tokenClient.requestAccessToken({ prompt: 'none' });
+      const interval = setInterval(() => {
+        if (gapi.client.getToken()) {
+          clearInterval(interval);
+          resolve();
+        }
+      }, 50);
+    });
+  }
+}
+
+// Actual sync implementation using Drive v3 client API
+async function syncDbToDriveImpl(driveFileId) {
+  if (!driveFileId) return false;
+
+  await refreshAccessTokenIfNeeded();
 
   try {
-    const blob = new Blob([await exportDb()], {
-      type: "application/x-sqlite3",
+    const blob = new Blob([await exportDb()], { type: 'application/x-sqlite3' });
+    await gapi.client.drive.files.update({
+      fileId: driveFileId,
+      uploadType: 'media',
+      media: { mimeType: 'application/x-sqlite3', body: blob },
     });
-
-    await gapi.client.request({
-      path: `upload/drive/v3/files/${driveFileId}`,
-      method: "PATCH",
-      params: { uploadType: "media" },
-      headers: { "Content-Type": "application/x-sqlite3" },
-      body: blob,
-    });
-
     return true;
   } catch (error) {
-    console.error("Error syncing to Google Drive:", error);
-    // Don't show alert here since this is called from other functions
+    console.error('Error syncing to Google Drive:', error);
+    // If unauthorized, request a new token with consent and retry once
+    if (error.status === 401 && window.tokenClient) {
+      try {
+        window.tokenClient.requestAccessToken({ prompt: 'consent' });
+        await refreshAccessTokenIfNeeded();
+        await gapi.client.drive.files.update({
+          fileId: driveFileId,
+          uploadType: 'media',
+          media: { mimeType: 'application/x-sqlite3', body: blob },
+        });
+        return true;
+      } catch (retryError) {
+        console.error('Retry syncing to Google Drive failed:', retryError);
+      }
+    }
     return false;
   }
 }
+
+// Debounced export for use in event handlers (2-second delay)
+export const syncDbToDrive = debounce(syncDbToDriveImpl, 2000);
