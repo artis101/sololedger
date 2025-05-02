@@ -167,31 +167,40 @@ export async function checkOnboardingRequirements(): Promise<{
 
 // Initialize onboarding
 export function initOnboarding(): void {
-  // Check onboarding requirements on app initialization
-  checkOnboardingRequirements();
-  
-  // Add "Help me set up" button in header
-  const header = $('.header-container');
-  if (header) {
-    const helpButton = document.createElement('button');
-    helpButton.id = 'onboarding-help-btn';
-    helpButton.className = 'ml-4 inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500';
-    helpButton.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
-        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
-      </svg>
-      Setup Guide
-    `;
+  // Check if we're on an app route
+  import('../router').then(({ router }) => {
+    const routerInstance = router();
+    const currentRoute = routerInstance.getCurrentRoute();
     
-    helpButton.addEventListener('click', async () => {
-      const { hasBusinessSettings, hasClients } = await checkOnboardingRequirements();
+    // Only show onboarding if we're on an app route
+    if (currentRoute && currentRoute.path.startsWith('/app/')) {
+      // Check onboarding requirements only on app pages
+      checkOnboardingRequirements();
+    }
+    
+    // Add "Help me set up" button in header
+    const header = $('.header-container');
+    if (header) {
+      const helpButton = document.createElement('button');
+      helpButton.id = 'onboarding-help-btn';
+      helpButton.className = 'ml-4 inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500';
+      helpButton.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+        </svg>
+        Setup Guide
+      `;
       
-      // If everything is set up, show a success message
-      if (hasBusinessSettings && hasClients) {
-        alert('Your account is fully set up! You can now create invoices.');
-      }
-    });
-    
-    header.appendChild(helpButton);
-  }
+      helpButton.addEventListener('click', async () => {
+        const { hasBusinessSettings, hasClients } = await checkOnboardingRequirements();
+        
+        // If everything is set up, show a success message
+        if (hasBusinessSettings && hasClients) {
+          alert('Your account is fully set up! You can now create invoices.');
+        }
+      });
+      
+      header.appendChild(helpButton);
+    }
+  });
 }

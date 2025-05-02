@@ -6,30 +6,38 @@ export type Route = {
   tabId: string;
   pageId: string;
   title?: string;
+  isLanding?: boolean;
 };
 
 // Available routes
 export const routes: Route[] = [
   {
     path: "/",
+    tabId: "landing-tab",
+    pageId: "landing-page",
+    title: "Home",
+    isLanding: true,
+  },
+  {
+    path: "/app/dashboard",
     tabId: "dashboard-tab",
     pageId: "dashboard-page",
     title: "Dashboard",
   },
   {
-    path: "/clients",
+    path: "/app/clients",
     tabId: "clients-tab",
     pageId: "clients-page",
     title: "Clients",
   },
   {
-    path: "/invoices",
+    path: "/app/invoices",
     tabId: "invoices-tab",
     pageId: "invoices-page",
     title: "Invoices",
   },
   {
-    path: "/settings",
+    path: "/app/settings",
     tabId: "settings-tab",
     pageId: "settings-page",
     title: "Settings",
@@ -94,7 +102,7 @@ export class Router {
     if (viewAllInvoicesLink) {
       viewAllInvoicesLink.addEventListener("click", (e: Event) => {
         e.preventDefault();
-        this.navigate("/invoices");
+        this.navigate("/app/invoices");
       });
     }
   }
@@ -109,7 +117,7 @@ export class Router {
       currentPath = window.location.hash.substring(1);
     }
 
-    // Default to dashboard if no valid route is found
+    // Default to home page if no valid route is found
     const validPath = this.routes.some((route) => route.path === currentPath);
     if (!validPath) {
       currentPath = "/";
@@ -153,14 +161,27 @@ export class Router {
 
   // Update UI based on the current route
   private updateUI(route: Route): void {
-    // Update tab buttons (active state)
-    this.tabButtons.forEach((btn) => {
-      if (btn.id === route.tabId) {
-        btn.classList.add("tab-active");
-      } else {
-        btn.classList.remove("tab-active");
-      }
-    });
+    // Get header and navigation elements
+    const header = $('#app-header');
+    const navigation = $('#app-navigation');
+    
+    // Handle showing/hiding the app header and navigation for landing pages
+    if (route.isLanding) {
+      if (header) header.classList.add('hidden');
+      if (navigation) navigation.classList.add('hidden');
+    } else {
+      if (header) header.classList.remove('hidden');
+      if (navigation) navigation.classList.remove('hidden');
+      
+      // Update tab buttons (active state)
+      this.tabButtons.forEach((btn) => {
+        if (btn.id === route.tabId) {
+          btn.classList.add("tab-active");
+        } else {
+          btn.classList.remove("tab-active");
+        }
+      });
+    }
 
     // Show the correct content page, hide others
     this.tabContents.forEach((content) => {
@@ -178,20 +199,29 @@ export class Router {
   }
 
   // Navigate to a specific page (helper methods)
-  public navigateToDashboard(): void {
+  public navigateToHome(): void {
     this.navigate("/");
   }
 
+  public navigateToDashboard(): void {
+    this.navigate("/app/dashboard");
+  }
+
   public navigateToClients(): void {
-    this.navigate("/clients");
+    this.navigate("/app/clients");
   }
 
   public navigateToInvoices(): void {
-    this.navigate("/invoices");
+    this.navigate("/app/invoices");
   }
 
   public navigateToSettings(): void {
-    this.navigate("/settings");
+    this.navigate("/app/settings");
+  }
+  
+  // Check if a route is an app route (non-landing page)
+  public isAppRoute(path: string): boolean {
+    return path.startsWith('/app/');
   }
 }
 
