@@ -1,10 +1,11 @@
-import { listClients, listInvoices, getBusinessSettings, markInvoiceSent } from "./db.js";
+import { listClients, listInvoices, getBusinessSettings, markInvoiceSent } from "./db";
+import { Client, Invoice, BusinessSettings, ClientRow, InvoiceRow } from "./types";
 
-export const $ = (sel) => document.querySelector(sel);
-export const $$ = (sel) => document.querySelectorAll(sel);
+export const $ = (sel: string): HTMLElement => document.querySelector(sel) as HTMLElement;
+export const $$ = (sel: string): NodeListOf<Element> => document.querySelectorAll(sel);
 
 // Helper function to get currency symbol
-export function getCurrencySymbol(currencyCode) {
+export function getCurrencySymbol(currencyCode: string): string {
   switch (currencyCode) {
     case 'USD': return '$';
     case 'EUR': return '€';
@@ -13,13 +14,13 @@ export function getCurrencySymbol(currencyCode) {
   }
 }
 
-export function toggle(el, show) {
+export function toggle(el: HTMLElement, show: boolean): void {
   el.classList[show ? "remove" : "add"]("hidden");
 }
 
-export async function renderClients() {
-  const clients = await listClients();
-  const tbody = $("#client-rows");
+export async function renderClients(): Promise<void> {
+  const clients = await listClients(); // Keep as any[] type
+  const tbody = $("#client-rows") as HTMLTableElement;
   tbody.innerHTML = "";
   const fragment = document.createDocumentFragment();
   for (const row of clients) {
@@ -41,19 +42,19 @@ export async function renderClients() {
   }
   tbody.appendChild(fragment);
   // Populate client select
-  const sel = $("#client-select");
+  const sel = $("#client-select") as HTMLSelectElement;
   sel.innerHTML = '<option value="" disabled selected hidden>Select…</option>';
   const optFrag = document.createDocumentFragment();
   for (const row of clients) {
     const option = document.createElement("option");
-    option.value = row[0];
+    option.value = row[0].toString();
     option.textContent = row[1];
     optFrag.appendChild(option);
   }
   sel.appendChild(optFrag);
 }
 
-export async function renderInvoices() {
+export async function renderInvoices(): Promise<void> {
   // Get business settings for currency
   let currencySymbol = '€'; // Default
   try {
@@ -64,53 +65,53 @@ export async function renderInvoices() {
   } catch (error) {
     console.error("Error getting currency from business settings:", error);
   }
-  
-  const invoices = await listInvoices();
-  const tbody = $("#invoice-rows");
+
+  const invoices = await listInvoices(); // Keep as any[] type
+  const tbody = $("#invoice-rows") as HTMLTableSectionElement;
   tbody.innerHTML = "";
   const fragment = document.createDocumentFragment();
-  
+
   // Function to format dates in a friendly way
-  const formatDate = (isoString) => {
+  const formatDate = (isoString: string | null): string => {
     if (!isoString) return "";
     const date = new Date(isoString);
-    
+
     // Check if the date is today
     const today = new Date();
     const isToday = date.getDate() === today.getDate() &&
                     date.getMonth() === today.getMonth() &&
                     date.getFullYear() === today.getFullYear();
-                    
+
     // If today, show the time
     if (isToday) {
       return `Today at ${date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
     }
-    
+
     // If within last 7 days, show day name and time
-    const daysDiff = Math.floor((today - date) / (1000 * 60 * 60 * 24));
+    const daysDiff = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
     if (daysDiff < 7) {
       return `${date.toLocaleDateString([], {weekday: 'short'})} at ${date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
     }
-    
+
     // Otherwise show date
     return date.toLocaleDateString();
   };
-  
+
   for (const row of invoices) {
     const isPaid = row[5] === 1;
     const isLocked = row[6] === 1;
     const lockedAt = row[7];  // Index 7 is locked_at
     const paidAt = row[8];    // Index 8 is paid_at
     const sentAt = row[9];    // Index 9 is sent_at
-    
+
     // Determine row color based on status
     let rowClass = "odd:bg-gray-50";
     if (isPaid) rowClass += " bg-green-50";
     if (isLocked) rowClass += " border-l-4 border-red-400";
-    
+
     const tr = document.createElement("tr");
     tr.className = rowClass;
-    
+
     tr.innerHTML = `
       <td class="px-3 py-2">
         ${row[1]}
@@ -131,8 +132,8 @@ export async function renderInvoices() {
           <span class="status-badge ${isPaid ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'} text-xs px-2 py-1 rounded-full">
             ${isPaid ? 'PAID' : 'UNPAID'}
           </span>
-          ${isLocked ? 
-            '<span class="status-badge bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full ml-1">LOCKED</span>' : 
+          ${isLocked ?
+            '<span class="status-badge bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full ml-1">LOCKED</span>' :
             ''}
         </span>
       </td>
@@ -199,80 +200,89 @@ export async function renderInvoices() {
     fragment.appendChild(tr);
   }
   tbody.appendChild(fragment);
-  
+
   // Also update invoice table header to show currency
-  const invoiceTableHeader = $("#invoice-table thead tr th:nth-child(4)");
+  const invoiceTableHeader = $("#invoice-table thead tr th:nth-child(4)") as HTMLTableCellElement;
   if (invoiceTableHeader) {
     invoiceTableHeader.textContent = `Total (${currencySymbol})`;
   }
-  
+
   // Set up popover functionality
   setupInvoiceActionPopovers();
 }
 
 // Set up the invoice actions popover functionality
-function setupInvoiceActionPopovers() {
+function setupInvoiceActionPopovers(): void {
   // Close all open popovers
-  function closeAllPopovers() {
+  function closeAllPopovers(): void {
     document.querySelectorAll('.invoice-actions-popover').forEach(popover => {
       popover.classList.add('hidden');
     });
   }
-  
+
   // Handle clicking outside to close popovers
-  document.addEventListener('click', (e) => {
-    if (!e.target.closest('.invoice-actions-btn') && !e.target.closest('.invoice-actions-popover')) {
+  document.addEventListener('click', (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (!target.closest('.invoice-actions-btn') && !target.closest('.invoice-actions-popover')) {
       closeAllPopovers();
     }
   });
-  
+
   // Toggle popover when clicking the button
   document.querySelectorAll('.invoice-actions-btn').forEach(button => {
-    button.addEventListener('click', (e) => {
+    button.addEventListener('click', (e: Event) => {
       e.stopPropagation();
-      const invoiceId = e.target.closest('[data-invoice-id]').dataset.invoiceId;
-      const popover = e.target.closest('[data-invoice-id]').querySelector('.invoice-actions-popover');
-      
+      const target = e.target as HTMLElement;
+      const container = target.closest('[data-invoice-id]') as HTMLElement;
+      if (!container) return;
+
+      const invoiceId = container.dataset.invoiceId;
+      const popover = container.querySelector('.invoice-actions-popover') as HTMLElement;
+      if (!popover) return;
+
       // Close all other popovers
       document.querySelectorAll('.invoice-actions-popover').forEach(p => {
         if (p !== popover) {
           p.classList.add('hidden');
         }
       });
-      
+
       // Toggle this popover
       popover.classList.toggle('hidden');
     });
   });
-  
+
   // Setup the "Mark as Sent" button handler
   document.querySelectorAll('.invoice-send-btn').forEach(button => {
-    if (!button.disabled) {
-      button.addEventListener('click', async (e) => {
-        const invoiceId = Number(e.target.closest('[data-id]').dataset.id);
+    if (!(button as HTMLButtonElement).disabled) {
+      button.addEventListener('click', async (e: Event) => {
+        const target = e.target as HTMLElement;
+        const buttonElement = target.closest('[data-id]') as HTMLElement;
+        if (!buttonElement) return;
+
+        const invoiceId = Number(buttonElement.dataset.id);
         try {
           await markInvoiceSent(invoiceId);
-          
+
           // Refresh the invoices list
-          const clients = await listClients();
-          const invoices = await listInvoices();
           await renderInvoices();
-          
+
           // Close all popovers
           closeAllPopovers();
-          
+
           // Show confirmation
           alert('Invoice marked as sent!');
         } catch (error) {
+          const err = error as Error;
           console.error('Error marking invoice as sent:', error);
-          alert(`Error marking invoice as sent: ${error.message}`);
+          alert(`Error marking invoice as sent: ${err.message}`);
         }
       });
     }
   });
 }
 
-export function addItemRow(desc = "", qty = "", unit = "") {
+export function addItemRow(desc = "", qty = "", unit = ""): void {
   const tr = document.createElement("tr");
   tr.innerHTML = `
     <td class="border-t"><input class="w-full p-2" name="description" value="${desc}" required></td>

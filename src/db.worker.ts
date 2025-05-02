@@ -1,11 +1,23 @@
 import initSqlJs from "sql.js";
 import sqlWasmUrl from "sql.js/dist/sql-wasm.wasm?url";
+import {
+  Client,
+  Invoice,
+  InvoiceItem,
+  BusinessSettings,
+  RpcRequest,
+  RpcResponse,
+  SqlModule,
+  SqlDatabase,
+  SqlStatement,
+  InvoiceAudit
+} from "./types";
 
 // IndexedDB persistence (works in Web Worker)
 const IDB_DB_NAME = "sololedger";
 const IDB_STORE_NAME = "sqlite";
 
-function openIdb() {
+function openIdb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(IDB_DB_NAME, 1);
     req.onupgradeneeded = () => {
@@ -19,9 +31,9 @@ function openIdb() {
   });
 }
 
-async function persistLocal() {
+async function persistLocal(): Promise<void> {
   const idb = await openIdb();
-  return new Promise((resolve, reject) => {
+  return new Promise<void>((resolve, reject) => {
     const tx = idb.transaction(IDB_STORE_NAME, "readwrite");
     const store = tx.objectStore(IDB_STORE_NAME);
     const data = db.export();
@@ -31,9 +43,9 @@ async function persistLocal() {
   });
 }
 
-async function loadLocal() {
+async function loadLocal(): Promise<boolean> {
   const idb = await openIdb();
-  return new Promise((resolve, reject) => {
+  return new Promise<boolean>((resolve, reject) => {
     const tx = idb.transaction(IDB_STORE_NAME, "readonly");
     const store = tx.objectStore(IDB_STORE_NAME);
     const req = store.get("db");
@@ -50,26 +62,32 @@ async function loadLocal() {
   });
 }
 
-let SQL, db;
+let SQL: SqlModule;
+let db: SqlDatabase;
+
+interface Migration {
+  version: number;
+  up: (db: SqlDatabase) => void;
+}
 
 // Schema migrations using PRAGMA user_version
-const migrations = [
+const migrations: Migration[] = [
   {
     version: 1,
-    up: (db) => {
+    up: (db: SqlDatabase) => {
       /* initial schema created in initSql */
     },
   },
   {
     version: 2,
-    up: (db) => {
+    up: (db: SqlDatabase) => {
       // Add paid column to invoices table with default value of 0 (unpaid)
       db.run("ALTER TABLE invoices ADD COLUMN paid INTEGER DEFAULT 0");
     },
   },
   {
     version: 3,
-    up: (db) => {
+    up: (db: SqlDatabase) => {
       // Add invoice numbering fields to business settings
       db.run("ALTER TABLE business_settings ADD COLUMN invoice_number_format TEXT DEFAULT 'INV-{YEAR}-{SEQ}'");
       db.run("ALTER TABLE business_settings ADD COLUMN invoice_number_counter INTEGER DEFAULT 1");
@@ -81,14 +99,14 @@ const migrations = [
   },
   {
     version: 4,
-    up: (db) => {
+    up: (db: SqlDatabase) => {
       // Add locked column to invoices table with default value of 0 (unlocked)
       db.run("ALTER TABLE invoices ADD COLUMN locked INTEGER DEFAULT 0");
     },
   },
   {
     version: 5,
-    up: (db) => {
+    up: (db: SqlDatabase) => {
       // Create invoice_audit table for tracking changes to locked invoices
       db.run(`CREATE TABLE IF NOT EXISTS invoice_audit (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -102,7 +120,7 @@ const migrations = [
   },
   {
     version: 6,
-    up: (db) => {
+    up: (db: SqlDatabase) => {
       // Add date columns for tracking when invoices were locked, paid, and sent
       db.run("ALTER TABLE invoices ADD COLUMN locked_at TEXT");
       db.run("ALTER TABLE invoices ADD COLUMN paid_at TEXT");
@@ -111,7 +129,7 @@ const migrations = [
   },
 ];
 
-function runMigrations() {
+function runMigrations(): void {
   const res = db.exec("PRAGMA user_version");
   const current = res[0]?.values[0][0] || 0;
   for (const m of migrations) {
@@ -123,7 +141,7 @@ function runMigrations() {
 }
 
 // Initialize SQL.js and local database
-async function initSql() {
+async function initSql(): Promise<boolean> {
   SQL = await initSqlJs({
     locateFile: () => sqlWasmUrl,
   });
@@ -164,7 +182,7 @@ async function initSql() {
       unit REAL,
       FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE
   );`);
-  
+
   db.run(`CREATE TABLE IF NOT EXISTS invoice_audit (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       invoice_id INTEGER NOT NULL,
@@ -201,14 +219,14 @@ async function initSql() {
   return true;
 }
 
-function loadDb(data) {
+function loadDb(data: Uint8Array): boolean {
   db = new SQL.Database(data);
   db.run("PRAGMA foreign_keys = ON;");
   runMigrations();
   return true;
 }
 
-function withTransaction(fn) {
+function withTransaction<T>(fn: (db: SqlDatabase) => T): T {
   db.run("BEGIN");
   try {
     const res = fn(db);
@@ -220,14 +238,14 @@ function withTransaction(fn) {
   }
 }
 
-function listClients() {
+function listClients(): any[] {
   const res = db.exec(
     "SELECT id, name, email, address FROM clients ORDER BY name"
   );
   return res.length ? res[0].values : [];
 }
 
-function listInvoices() {
+function listInvoices(): any[] {
   const sql = `SELECT inv.id, inv.number, inv.date, c.name, inv.total, inv.paid, inv.locked,
                inv.locked_at, inv.paid_at, inv.sent_at
                FROM invoices inv JOIN clients c ON c.id = inv.client_id
@@ -236,7 +254,7 @@ function listInvoices() {
   return res.length ? res[0].values : [];
 }
 
-function getClient(id) {
+function getClient(id: number): Client | null {
   const stmt = db.prepare(
     "SELECT id, name, email, address FROM clients WHERE id = ?"
   );
@@ -250,7 +268,7 @@ function getClient(id) {
   }
 }
 
-function deleteClient(id) {
+function deleteClient(id: number): void {
   // ensure no invoices
   const countStmt = db.prepare(
     "SELECT COUNT(*) FROM invoices WHERE client_id = ?"
@@ -273,7 +291,7 @@ function deleteClient(id) {
   });
 }
 
-function saveClient(obj) {
+function saveClient(obj: Client): number {
   return withTransaction(() => {
     if (obj.id) {
       const stmt = db.prepare(
@@ -295,14 +313,15 @@ function saveClient(obj) {
       }
     }
     persistLocal().catch(() => {});
+    return obj.id || 0;
   });
 }
 
-function exportDb() {
+function exportDb(): Uint8Array {
   return db.export();
 }
 
-function deleteInvoice(id) {
+function deleteInvoice(id: number): void {
   return withTransaction(() => {
     // With ON DELETE CASCADE, we only need to delete the invoice
     // and all related items will be automatically deleted
@@ -316,12 +335,17 @@ function deleteInvoice(id) {
   });
 }
 
-function saveInvoice(header, items) {
+interface InvoiceWithForceOption extends Invoice {
+  forceSave?: boolean;
+  forceSaveReason?: string;
+}
+
+function saveInvoice(header: InvoiceWithForceOption, items: InvoiceItem[]): number {
   return withTransaction(() => {
     // Calculate the total from items to ensure consistency
     const calculatedTotal = items.reduce((sum, item) => sum + (item.qty * item.unit), 0);
-    
-    let invoiceId;
+
+    let invoiceId: number;
     if (header.id) {
       // Check if invoice is locked before allowing updates
       const isLocked = getLockedStatus(header.id);
@@ -336,12 +360,12 @@ function saveInvoice(header, items) {
           throw new Error("Invoice is locked. Unlock it first or use forceSave option to override.");
         }
       }
-      
+
       // Preserve paid status when updating if not explicitly set
       const existingPaidStatus = header.paid !== undefined ? header.paid : getPaidStatus(header.id);
       // Preserve locked status when updating if not explicitly set
       const existingLockedStatus = header.locked !== undefined ? header.locked : getLockedStatus(header.id);
-      
+
       const stmt = db.prepare(
         "UPDATE invoices SET number=?, date=?, client_id=?, total=?, paid=?, locked=? WHERE id=?"
       );
@@ -349,7 +373,7 @@ function saveInvoice(header, items) {
         stmt.run([
           header.number,
           header.date,
-          header.clientId,
+          header.client_id,
           calculatedTotal, // Use calculated total instead of header.total
           existingPaidStatus,
           existingLockedStatus,
@@ -374,7 +398,7 @@ function saveInvoice(header, items) {
         const paidStatus = header.paid !== undefined ? header.paid : 0;
         // For new invoices, use the provided locked status or default to 0 (unlocked)
         const lockedStatus = header.locked !== undefined ? header.locked : 0;
-        stmt.run([header.number, header.date, header.clientId, calculatedTotal, paidStatus, lockedStatus]); // Use calculated total
+        stmt.run([header.number, header.date, header.client_id, calculatedTotal, paidStatus, lockedStatus]); // Use calculated total
       } finally {
         stmt.free();
       }
@@ -395,7 +419,26 @@ function saveInvoice(header, items) {
   });
 }
 
-function getInvoiceWithItems(id) {
+interface InvoiceDetails {
+  header: {
+    number: string;
+    date: string;
+    client: string;
+    total: number;
+    paid: number;
+    locked: number;
+    lockedAt: string | null;
+    paidAt: string | null;
+    sentAt: string | null;
+  };
+  items: {
+    description: string;
+    qty: number;
+    unit: number;
+  }[];
+}
+
+function getInvoiceWithItems(id: number): InvoiceDetails {
   const headStmt = db.prepare(
     `SELECT inv.number, inv.date, c.name, inv.total, inv.paid, inv.locked,
      inv.locked_at, inv.paid_at, inv.sent_at 
@@ -406,12 +449,12 @@ function getInvoiceWithItems(id) {
     headStmt.bind([id]);
     headStmt.step();
     const h = headStmt.get();
-    header = { 
-      number: h[0], 
-      date: h[1], 
-      client: h[2], 
-      total: h[3], 
-      paid: h[4], 
+    header = {
+      number: h[0],
+      date: h[1],
+      client: h[2],
+      total: h[3],
+      paid: h[4],
       locked: h[5],
       lockedAt: h[6],
       paidAt: h[7],
@@ -423,7 +466,7 @@ function getInvoiceWithItems(id) {
   const itemsStmt = db.prepare(
     "SELECT description, qty, unit FROM invoice_items WHERE invoice_id=?"
   );
-  const items = [];
+  const items: {description: string; qty: number; unit: number}[] = [];
   try {
     itemsStmt.bind([id]);
     while (itemsStmt.step())
@@ -438,14 +481,14 @@ function getInvoiceWithItems(id) {
   return { header, items };
 }
 
-function wipeDatabase() {
+function wipeDatabase(): boolean {
   return withTransaction(() => {
     // Drop existing tables to completely clean the database
     db.run("DROP TABLE IF EXISTS invoice_items");
     db.run("DROP TABLE IF EXISTS invoices");
     db.run("DROP TABLE IF EXISTS clients");
     db.run("DROP TABLE IF EXISTS business_settings");
-    
+
     // Recreate the schema (copied from initSql)
     db.run("PRAGMA foreign_keys = ON;");
     db.run(`CREATE TABLE IF NOT EXISTS clients (
@@ -475,7 +518,7 @@ function wipeDatabase() {
         unit REAL,
         FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE
     );`);
-    
+
     db.run(`CREATE TABLE IF NOT EXISTS invoice_audit (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         invoice_id INTEGER NOT NULL,
@@ -508,20 +551,20 @@ function wipeDatabase() {
         invoice_number_reset TEXT DEFAULT 'yearly',
         invoice_number_last_reset TEXT
     );`);
-    
+
     // Reset user_version to current migration level
     const latestMigration = migrations.reduce((max, m) => Math.max(max, m.version), 0);
     db.run(`PRAGMA user_version = ${latestMigration}`);
-    
+
     // Persist the empty database with new structure
     persistLocal().catch(() => {});
-    
+
     return true;
   });
 }
 
 // Get paid status for an invoice
-function getPaidStatus(invoiceId) {
+function getPaidStatus(invoiceId: number): number {
   try {
     const stmt = db.prepare("SELECT paid FROM invoices WHERE id = ?");
     stmt.bind([invoiceId]);
@@ -536,31 +579,31 @@ function getPaidStatus(invoiceId) {
 }
 
 // Toggle the paid status of an invoice
-function toggleInvoicePaid(id) {
+function toggleInvoicePaid(id: number): {status: number; paidAt: string | null} {
   return withTransaction(() => {
     // Get current paid status
     const currentStatus = getPaidStatus(id);
     // Toggle it (1 becomes 0, 0 becomes 1)
     const newStatus = currentStatus ? 0 : 1;
-    
+
     // If marking as paid, set the paid_at timestamp
     // If marking as unpaid, clear the paid_at timestamp
     const paidAt = newStatus ? new Date().toISOString() : null;
-    
+
     const stmt = db.prepare("UPDATE invoices SET paid = ?, paid_at = ? WHERE id = ?");
     try {
       stmt.run([newStatus, paidAt, id]);
     } finally {
       stmt.free();
     }
-    
+
     persistLocal().catch(() => {});
     return { status: newStatus, paidAt };
   });
 }
 
 // Get locked status for an invoice
-function getLockedStatus(invoiceId) {
+function getLockedStatus(invoiceId: number): number {
   try {
     const stmt = db.prepare("SELECT locked FROM invoices WHERE id = ?");
     stmt.bind([invoiceId]);
@@ -575,7 +618,7 @@ function getLockedStatus(invoiceId) {
 }
 
 // Add an entry to the invoice audit log
-function logInvoiceAudit(invoiceId, action, details = null) {
+function logInvoiceAudit(invoiceId: number, action: string, details: any = null): boolean {
   try {
     const timestamp = new Date().toISOString();
     const stmt = db.prepare(
@@ -591,7 +634,7 @@ function logInvoiceAudit(invoiceId, action, details = null) {
 }
 
 // Get audit records for an invoice
-function getInvoiceAudit(invoiceId) {
+function getInvoiceAudit(invoiceId: number): any[] {
   try {
     const sql = `SELECT id, invoice_id, timestamp, action, details 
                  FROM invoice_audit 
@@ -599,7 +642,7 @@ function getInvoiceAudit(invoiceId) {
                  ORDER BY timestamp DESC`;
     const stmt = db.prepare(sql);
     stmt.bind([invoiceId]);
-    
+
     const results = [];
     while (stmt.step()) {
       const row = stmt.get();
@@ -620,76 +663,76 @@ function getInvoiceAudit(invoiceId) {
 }
 
 // Toggle the locked status of an invoice
-function toggleInvoiceLocked(id) {
+function toggleInvoiceLocked(id: number): {status: number; lockedAt: string | null} {
   return withTransaction(() => {
     // Get current locked status
     const currentStatus = getLockedStatus(id);
     // Toggle it (1 becomes 0, 0 becomes 1)
     const newStatus = currentStatus ? 0 : 1;
-    
+
     // If marking as locked, set the locked_at timestamp
     // If unlocking, clear the locked_at timestamp
     const lockedAt = newStatus ? new Date().toISOString() : null;
-    
+
     const stmt = db.prepare("UPDATE invoices SET locked = ?, locked_at = ? WHERE id = ?");
     try {
       stmt.run([newStatus, lockedAt, id]);
-      
+
       // Log the change to audit trail
       logInvoiceAudit(id, newStatus ? "locked" : "unlocked");
     } finally {
       stmt.free();
     }
-    
+
     persistLocal().catch(() => {});
     return { status: newStatus, lockedAt };
   });
 }
 
 // Mark an invoice as sent
-function markInvoiceSent(id) {
+function markInvoiceSent(id: number): string {
   return withTransaction(() => {
     const now = new Date().toISOString();
-    
+
     // Only update sent_at if it's not already set
     const stmt = db.prepare(`
       UPDATE invoices 
       SET sent_at = CASE WHEN sent_at IS NULL THEN ? ELSE sent_at END 
       WHERE id = ?
     `);
-    
+
     try {
       stmt.run([now, id]);
-      
+
       // Also log to audit trail
       logInvoiceAudit(id, "sent", { sentAt: now });
     } finally {
       stmt.free();
     }
-    
+
     persistLocal().catch(() => {});
     return now;
   });
 }
 
 // Check if an invoice number is already in use
-function isInvoiceNumberUnique(number, excludeId = null) {
+function isInvoiceNumberUnique(number: string, excludeId: number | null = null): boolean {
   try {
     let sql = "SELECT COUNT(*) FROM invoices WHERE number = ?";
-    const params = [number];
-    
+    const params: any[] = [number];
+
     // If excluding a specific invoice ID (for updates)
     if (excludeId) {
       sql += " AND id != ?";
       params.push(excludeId);
     }
-    
+
     const stmt = db.prepare(sql);
     stmt.bind(params);
     stmt.step();
     const count = stmt.get()[0];
     stmt.free();
-    
+
     return count === 0; // Return true if unique (count is 0)
   } catch (error) {
     console.error("Error checking invoice number uniqueness:", error);
@@ -698,14 +741,14 @@ function isInvoiceNumberUnique(number, excludeId = null) {
 }
 
 // Parse invoice number format and generate the next invoice number
-function generateNextInvoiceNumber() {
+function generateNextInvoiceNumber(): string {
   return withTransaction(() => {
     // Get business settings for invoice numbering
     const settings = getBusinessSettings();
     if (!settings) {
       return "INV-0001"; // Default if no settings exist
     }
-    
+
     // Extract numbering settings
     const format = settings.invoice_number_format || 'INV-{YEAR}-{SEQ}';
     const prefix = settings.invoice_number_prefix || '';
@@ -713,15 +756,15 @@ function generateNextInvoiceNumber() {
     let counter = settings.invoice_number_counter || 1;
     const resetOption = settings.invoice_number_reset || 'yearly';
     let lastReset = settings.invoice_number_last_reset;
-    
+
     // Check if counter needs to be reset
     const now = new Date();
     const currentDateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
-    
+
     // Only reset if we have a last reset date
     if (lastReset) {
       const lastResetDate = new Date(lastReset);
-      
+
       if (resetOption === 'yearly') {
         // Reset if the year has changed
         if (lastResetDate.getFullYear() < now.getFullYear()) {
@@ -730,8 +773,8 @@ function generateNextInvoiceNumber() {
         }
       } else if (resetOption === 'monthly') {
         // Reset if the month or year has changed
-        if (lastResetDate.getFullYear() < now.getFullYear() || 
-            (lastResetDate.getFullYear() === now.getFullYear() && 
+        if (lastResetDate.getFullYear() < now.getFullYear() ||
+            (lastResetDate.getFullYear() === now.getFullYear() &&
              lastResetDate.getMonth() < now.getMonth())) {
           counter = 1;
           lastReset = currentDateStr;
@@ -742,13 +785,13 @@ function generateNextInvoiceNumber() {
       // No last reset date, set it now
       lastReset = currentDateStr;
     }
-    
+
     // Format the variables
     const year = now.getFullYear().toString();
     const shortYear = year.slice(2); // Last two digits
     const month = (now.getMonth() + 1).toString().padStart(2, '0');
     const paddedCounter = counter.toString().padStart(padding, '0');
-    
+
     // Parse the format string
     let nextNumber = format
       .replace('{YEAR}', year)
@@ -756,7 +799,7 @@ function generateNextInvoiceNumber() {
       .replace('{MONTH}', month)
       .replace('{SEQ}', paddedCounter)
       .replace('{PREFIX}', prefix);
-    
+
     // Update the counter for next time
     const stmt = db.prepare(
       "UPDATE business_settings SET invoice_number_counter = ?, invoice_number_last_reset = ? WHERE id = 1"
@@ -766,45 +809,45 @@ function generateNextInvoiceNumber() {
     } finally {
       stmt.free();
     }
-    
+
     persistLocal().catch(() => {});
     return nextNumber;
   });
 }
 
-function getBusinessSettings() {
+function getBusinessSettings(): BusinessSettings | null {
   const res = db.exec("SELECT * FROM business_settings WHERE id = 1");
   if (!res.length || !res[0].values.length) {
     return null; // No business settings found
   }
-  
+
   const columns = res[0].columns;
   const values = res[0].values[0];
-  
+
   // Convert the result to an object
-  const settings = {};
+  const settings: BusinessSettings = {};
   columns.forEach((col, index) => {
-    settings[col] = values[index];
+    (settings as any)[col] = values[index];
   });
-  
+
   return settings;
 }
 
-function saveBusinessSettings(settings) {
+function saveBusinessSettings(settings: BusinessSettings): boolean {
   return withTransaction(() => {
     // Add current timestamp for lastUpdated
     const now = new Date().toISOString();
     settings.lastUpdated = now;
-    
+
     // Create column names and placeholders
     const columns = Object.keys(settings).filter(k => k !== 'id');
     const placeholders = columns.map(() => '?');
-    const values = columns.map(col => settings[col]);
-    
+    const values = columns.map(col => (settings as any)[col]);
+
     // Check if a record exists
     const existingRecord = db.exec("SELECT COUNT(*) FROM business_settings WHERE id = 1");
     const exists = existingRecord[0]?.values[0][0] > 0;
-    
+
     if (exists) {
       // Update existing record
       const setClause = columns.map(col => `${col} = ?`).join(', ');
@@ -826,14 +869,18 @@ function saveBusinessSettings(settings) {
         stmt.free();
       }
     }
-    
+
     persistLocal().catch(() => {});
     return true;
   });
 }
 
 // RPC message handler
-const methods = {
+interface Methods {
+  [key: string]: (...args: any[]) => any;
+}
+
+const methods: Methods = {
   initSql,
   loadDb,
   listClients,
@@ -856,16 +903,21 @@ const methods = {
   getInvoiceAudit,
 };
 
-onmessage = async (e) => {
+onmessage = async (e: MessageEvent<RpcRequest>) => {
   const { id, method, params } = e.data;
   try {
     const result = await methods[method](...params);
     if (result instanceof Uint8Array) {
-      postMessage({ id, result }, [result.buffer]);
+      // Use a type assertion to tell TypeScript this is the correct signature
+      (postMessage as (message: any, transfer: Transferable[]) => void)(
+        { id, result } as RpcResponse, 
+        [result.buffer]
+      );
     } else {
-      postMessage({ id, result });
+      postMessage({ id, result } as RpcResponse);
     }
   } catch (err) {
-    postMessage({ id, error: err.message || err.toString() });
+    const error = err instanceof Error ? err.message : String(err);
+    postMessage({ id, error } as RpcResponse);
   }
 };

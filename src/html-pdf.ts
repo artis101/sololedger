@@ -1,9 +1,56 @@
 import { PDFDocument } from "pdf-lib";
 import html2canvas from "html2canvas";
-import { $ } from "./ui.js";
+import { $ } from "./ui.ts";
+
+// Define interface for invoice and business settings
+interface InvoiceItem {
+  description: string;
+  qty: number;
+  unit: number;
+}
+
+interface InvoiceHeader {
+  number: string;
+  date: string;
+  client: string;
+  total: number;
+  paid?: number;
+  locked?: number;
+}
+
+interface Invoice {
+  header: InvoiceHeader;
+  items: InvoiceItem[];
+}
+
+interface BusinessSettings {
+  businessName?: string;
+  tradingName?: string;
+  businessAddress?: string;
+  businessEmail?: string;
+  businessPhone?: string;
+  taxId?: string;
+  taxRate?: number | string;
+  bankName?: string;
+  accountName?: string;
+  accountNumber?: string;
+  swiftCode?: string;
+  currency?: string;
+  paymentTerms?: string;
+  invoiceNote?: string;
+  lastUpdated?: string;
+  [key: string]: any;
+}
+
+interface BuildHtmlPdfOptions {
+  previewEl?: HTMLIFrameElement | null;
+  open?: boolean;
+  businessSettings?: BusinessSettings | null;
+  previewMode?: boolean;
+}
 
 // Helper function to get currency symbol
-export function getCurrencySymbol(currencyCode) {
+export function getCurrencySymbol(currencyCode: string): string {
   switch (currencyCode) {
     case 'USD': return '$';
     case 'EUR': return '€';
@@ -13,36 +60,36 @@ export function getCurrencySymbol(currencyCode) {
 }
 
 // Create and render HTML invoice template with the provided data
-export function createInvoiceHTML(invoice, businessSettings) {
+export function createInvoiceHTML(invoice: Invoice, businessSettings?: BusinessSettings | null): HTMLDivElement {
   // Create a container div for the invoice
   const containerDiv = document.createElement('div');
   containerDiv.id = 'invoice-html-template';
   containerDiv.className = 'bg-white p-8';
   containerDiv.style.cssText = 'font-family: Roboto, Arial, sans-serif; position: fixed; left: -9999px; top: -9999px; width: 210mm; height: 297mm; box-sizing: border-box; font-size: 12px;';
-  
+
   // Get currency symbol from settings or default to Euro
-  const currencySymbol = businessSettings?.currency ? 
-    getCurrencySymbol(businessSettings.currency) : 
+  const currencySymbol = businessSettings?.currency ?
+    getCurrencySymbol(businessSettings.currency) :
     '€';
 
   // Format date
   const formattedDate = new Date(invoice.header.date).toLocaleDateString('en-GB', {
     day: '2-digit',
-    month: 'short', 
+    month: 'short',
     year: 'numeric'
   });
-  
+
   // Calculate subtotal and tax if we have a tax rate
   let taxRate = 0;
   let taxAmount = 0;
   let subtotal = invoice.header.total;
-  
+
   if (businessSettings?.taxRate) {
-    taxRate = parseFloat(businessSettings.taxRate);
+    taxRate = parseFloat(businessSettings.taxRate.toString());
     subtotal = invoice.header.total / (1 + (taxRate / 100));
     taxAmount = invoice.header.total - subtotal;
   }
-  
+
   // Generate HTML content with responsive layout
   containerDiv.innerHTML = `
     <div style="height: 100%; display: flex; flex-direction: column;">
@@ -62,11 +109,11 @@ export function createInvoiceHTML(invoice, businessSettings) {
         <div class="w-1/2 text-right">
           <div class="flex flex-col items-end">
             <h2 class="text-4xl font-bold text-blue-600 mb-4">INVOICE</h2>
-            ${invoice.header.paid ? 
+            ${invoice.header.paid ?
               `<div class="mb-4 -mt-3 inline-block bg-green-100 text-green-800 px-4 py-1 rounded-lg border-2 border-green-300 transform rotate-1">
                 <span class="text-xl font-bold">PAID</span>
               </div>` : ''}
-            ${invoice.header.locked ? 
+            ${invoice.header.locked ?
               `<div class="mb-4 -mt-3 ${invoice.header.paid ? 'ml-2' : ''} inline-block bg-red-100 text-red-800 px-4 py-1 rounded-lg border-2 border-red-300 transform rotate-1">
                 <span class="text-xl font-bold">🔒 LOCKED</span>
               </div>` : ''}
@@ -162,24 +209,31 @@ export function createInvoiceHTML(invoice, businessSettings) {
         </div>
       </div>
     </div>`;
-  
+
   // Append to body temporarily (will be removed later)
   document.body.appendChild(containerDiv);
   return containerDiv;
 }
 
-export async function buildHtmlPdf(invoice, { previewEl = null, open = true, businessSettings = null, previewMode = false } = {}) {
+export async function buildHtmlPdf(invoice: Invoice, options: BuildHtmlPdfOptions = {}): Promise<string> {
+  const { 
+    previewEl = null, 
+    open = true, 
+    businessSettings = null, 
+    previewMode = false 
+  } = options;
+
   try {
     // Create the HTML invoice
     const invoiceDiv = createInvoiceHTML(invoice, businessSettings);
-    
+
     // Wait a moment for styles to apply
     await new Promise(resolve => setTimeout(resolve, 100));
-    
+
     // Configure canvas settings based on mode
     const canvasSettings = {
       scale: previewMode ? 1.5 : 3, // Lower scale for preview to improve performance
-      useCORS: true, 
+      useCORS: true,
       logging: false,
       allowTaint: true,
       backgroundColor: '#ffffff',
@@ -193,25 +247,25 @@ export async function buildHtmlPdf(invoice, { previewEl = null, open = true, bus
       letterRendering: true,
       foreignObjectRendering: false // Use the slower but more accurate canvas rendering
     };
-    
+
     // Convert HTML to canvas with appropriate quality
     const canvas = await html2canvas(invoiceDiv, canvasSettings);
-    
+
     // Remove the temporary div
     document.body.removeChild(invoiceDiv);
-    
+
     // Create PDF document
     const pdfDoc = await PDFDocument.create();
     const page = pdfDoc.addPage([595, 842]); // A4 size in points at 72 DPI
-    
+
     // Convert canvas to image with appropriate quality based on mode
     const imageQuality = previewMode ? 0.85 : 1.0;
     const imgFormat = previewMode ? 'image/png' : 'image/jpeg'; // PNG for preview for better text clarity
     const imgData = canvas.toDataURL(imgFormat, imageQuality);
-    
+
     // Remove the data URL prefix to get just the base64 data
     const base64Data = imgData.replace(/^data:image\/(png|jpeg);base64,/, '');
-    
+
     // Embed the image in the PDF using the appropriate method
     let image;
     if (previewMode) {
@@ -221,7 +275,7 @@ export async function buildHtmlPdf(invoice, { previewEl = null, open = true, bus
       const jpgImageBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
       image = await pdfDoc.embedJpg(jpgImageBytes);
     }
-    
+
     // Draw the image on the PDF using the full page
     page.drawImage(image, {
       x: 0,
@@ -229,25 +283,25 @@ export async function buildHtmlPdf(invoice, { previewEl = null, open = true, bus
       width: page.getWidth(),
       height: page.getHeight(),
     });
-    
+
     // Save the PDF with appropriate compression
-    const pdfBytes = await pdfDoc.save({ 
+    const pdfBytes = await pdfDoc.save({
       useObjectStreams: !previewMode // More compression for final PDFs, less for previews
     });
-    
+
     const blob = new Blob([pdfBytes], { type: "application/pdf" });
     const url = URL.createObjectURL(blob);
-    
+
     // Display or open the PDF
     if (previewEl) {
       // Add a cache-busting parameter to prevent stale previews
       previewEl.src = url + '#t=' + new Date().getTime();
     }
-    
+
     if (open) {
       window.open(url, "_blank");
     }
-    
+
     return url;
   } catch (error) {
     console.error("Error generating PDF from HTML:", error);
