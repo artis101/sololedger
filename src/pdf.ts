@@ -45,10 +45,14 @@ async function fetchFontBytes(): Promise<ArrayBuffer> {
 // Helper function to get currency symbol from currency code
 function getCurrencySymbol(currencyCode: string): string {
   switch (currencyCode) {
-    case 'USD': return '$';
-    case 'EUR': return '€';
-    case 'GBP': return '£';
-    default: return currencyCode;
+    case "USD":
+      return "$";
+    case "EUR":
+      return "€";
+    case "GBP":
+      return "£";
+    default:
+      return currencyCode;
   }
 }
 
@@ -65,14 +69,14 @@ export async function buildPdf(
   const font = await pdfDoc.embedFont(fontBytes, { subset: true });
 
   // Get currency symbol from settings or default to Euro
-  const currencySymbol = businessSettings?.currency ?
-    getCurrencySymbol(businessSettings.currency) :
-    '€';
+  const currencySymbol = businessSettings?.currency
+    ? getCurrencySymbol(businessSettings.currency)
+    : "€";
 
   // Business information section (top left)
   if (businessSettings) {
     let yBusiness = 800;
-    const businessName = businessSettings.businessName || 'Your Business';
+    const businessName = businessSettings.businessName || "Your Business";
     page.drawText(businessName, {
       x: 50,
       y: yBusiness,
@@ -93,7 +97,7 @@ export async function buildPdf(
 
     if (businessSettings.businessAddress) {
       // Split address into lines
-      const addressLines = businessSettings.businessAddress.split('\n');
+      const addressLines = businessSettings.businessAddress.split("\n");
       for (const line of addressLines) {
         page.drawText(line, {
           x: 50,
@@ -210,7 +214,12 @@ export async function buildPdf(
   for (const it of invoice.items) {
     page.drawText(it.description, { x: 50, y, size: 11, font });
     page.drawText(String(it.qty), { x: 300, y, size: 11, font });
-    page.drawText(`${it.unit.toFixed(2)} ${currencySymbol}`, { x: 350, y, size: 11, font });
+    page.drawText(`${it.unit.toFixed(2)} ${currencySymbol}`, {
+      x: 350,
+      y,
+      size: 11,
+      font,
+    });
     page.drawText(`${(it.qty * it.unit).toFixed(2)} ${currencySymbol}`, {
       x: 490,
       y,
@@ -301,7 +310,7 @@ export async function buildPdf(
     y -= 15;
 
     // Split note into lines if it's long
-    const noteLines = businessSettings.invoiceNote.split('\n');
+    const noteLines = businessSettings.invoiceNote.split("\n");
     for (const line of noteLines) {
       if (line.trim()) {
         page.drawText(line, {

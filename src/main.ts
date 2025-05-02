@@ -25,7 +25,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   } catch (error) {
     console.error("Application initialization error:", error);
     alert(
-      `Failed to initialize application: ${(error as Error).message}\nPlease check the console for details.`
+      `Failed to initialize application: ${
+        (error as Error).message
+      }\nPlease check the console for details.`
     );
   }
 
@@ -34,10 +36,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   initInvoiceHandlers();
   initTabHandlers();
   initSettingsHandlers();
-  
+
   // Initialize the router
   router();
-  
+
   // Initialize onboarding flow
   setTimeout(() => {
     initOnboarding();

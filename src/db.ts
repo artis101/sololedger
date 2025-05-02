@@ -5,8 +5,8 @@ import {
   InvoiceItem,
   BusinessSettings,
   RpcCallback,
-  RpcResponse
-} from './types';
+  RpcResponse,
+} from "./types";
 
 // RPC Web Worker interface for database operations
 let worker: Worker;
@@ -80,12 +80,20 @@ export function deleteInvoice(id: number): Promise<void> {
   return rpc<void>("deleteInvoice", id);
 }
 
-export function saveInvoice(header: Invoice, items: InvoiceItem[]): Promise<number> {
+export function saveInvoice(
+  header: Invoice,
+  items: InvoiceItem[]
+): Promise<number> {
   return rpc<number>("saveInvoice", header, items);
 }
 
-export function getInvoiceWithItems(id: number): Promise<{invoice: Invoice, items: InvoiceItem[]}> {
-  return rpc<{invoice: Invoice, items: InvoiceItem[]}>("getInvoiceWithItems", id);
+export function getInvoiceWithItems(
+  id: number
+): Promise<{ invoice: Invoice; items: InvoiceItem[] }> {
+  return rpc<{ invoice: Invoice; items: InvoiceItem[] }>(
+    "getInvoiceWithItems",
+    id
+  );
 }
 
 export function wipeDatabase(): Promise<void> {
@@ -100,7 +108,9 @@ export function getBusinessSettings(): Promise<BusinessSettings> {
   return rpc<BusinessSettings>("getBusinessSettings");
 }
 
-export function saveBusinessSettings(settings: BusinessSettings): Promise<void> {
+export function saveBusinessSettings(
+  settings: BusinessSettings
+): Promise<void> {
   return rpc<void>("saveBusinessSettings", settings);
 }
 
@@ -130,7 +140,10 @@ export function generateNextInvoiceNumber(): Promise<string> {
 }
 
 // Check if an invoice number is unique
-export function isInvoiceNumberUnique(number: string, excludeId: number | null = null): Promise<boolean> {
+export function isInvoiceNumberUnique(
+  number: string,
+  excludeId: number | null = null
+): Promise<boolean> {
   return rpc<boolean>("isInvoiceNumberUnique", number, excludeId);
 }
 
@@ -138,9 +151,12 @@ export function isInvoiceNumberUnique(number: string, excludeId: number | null =
 (window as any).importDb = importDb;
 
 // Debounce utility to limit function calls
-function debounce<T>(fn: (...args: any[]) => Promise<T>, ms: number): (...args: any[]) => Promise<T> {
+function debounce<T>(
+  fn: (...args: any[]) => Promise<T>,
+  ms: number
+): (...args: any[]) => Promise<T> {
   let timeout: NodeJS.Timeout | null = null;
-  let pendingCalls: { resolve: (value: T) => void, args: any[] }[] = [];
+  let pendingCalls: { resolve: (value: T) => void; args: any[] }[] = [];
 
   return function (...args: any[]): Promise<T> {
     return new Promise<T>((resolve) => {
@@ -153,8 +169,10 @@ function debounce<T>(fn: (...args: any[]) => Promise<T>, ms: number): (...args: 
         pendingCalls = [];
 
         // Group by argument signature to make sure each unique request gets its own result
-        const uniqueCalls: {[key: string]: { args: any[], resolvers: ((value: T) => void)[] }} = {};
-        calls.forEach(call => {
+        const uniqueCalls: {
+          [key: string]: { args: any[]; resolvers: ((value: T) => void)[] };
+        } = {};
+        calls.forEach((call) => {
           // Create a signature for the arguments
           const signature = JSON.stringify(call.args);
           if (!uniqueCalls[signature]) {
@@ -168,9 +186,9 @@ function debounce<T>(fn: (...args: any[]) => Promise<T>, ms: number): (...args: 
           const { args, resolvers } = uniqueCalls[key];
           try {
             const result = await fn(...args);
-            resolvers.forEach(r => r(result));
+            resolvers.forEach((r) => r(result));
           } catch (error) {
-            resolvers.forEach(r => r(false as any));
+            resolvers.forEach((r) => r(false as any));
           }
         }
       }, ms);

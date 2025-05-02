@@ -9,8 +9,6 @@ import {
   RpcResponse,
   SqlModule,
   SqlDatabase,
-  SqlStatement,
-  InvoiceAudit,
 } from "./types";
 
 // IndexedDB persistence (works in Web Worker)

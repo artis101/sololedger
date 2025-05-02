@@ -1,7 +1,7 @@
 // src/export-import.ts
 // Functions for exporting and importing the database
 
-import { exportDb } from './db.ts';
+import { exportDb } from "./db";
 
 // Add declaration for global importDb function
 declare global {
@@ -25,15 +25,15 @@ export async function exportDatabase(): Promise<ExportResult> {
     const dbData = await exportDb();
 
     // Create a blob from the data
-    const blob = new Blob([dbData], { type: 'application/x-sqlite3' });
+    const blob = new Blob([dbData], { type: "application/x-sqlite3" });
 
     // Generate a filename with timestamp
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     const filename = `sololedger-backup-${timestamp}.sqlite3`;
 
     // Create a download link and trigger it
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = filename;
     document.body.appendChild(a);
@@ -47,7 +47,7 @@ export async function exportDatabase(): Promise<ExportResult> {
 
     return { success: true, filename };
   } catch (error: any) {
-    console.error('Error exporting database:', error);
+    console.error("Error exporting database:", error);
     throw new Error(`Failed to export database: ${error.message}`);
   }
 }
@@ -60,8 +60,10 @@ export async function exportDatabase(): Promise<ExportResult> {
 export async function importDatabase(file: File): Promise<boolean> {
   try {
     // Validate the file type
-    if (!file.name.endsWith('.sqlite3') && !file.name.endsWith('.db')) {
-      throw new Error('Invalid file type. Please select a SQLite database file (.sqlite3 or .db)');
+    if (!file.name.endsWith(".sqlite3") && !file.name.endsWith(".db")) {
+      throw new Error(
+        "Invalid file type. Please select a SQLite database file (.sqlite3 or .db)"
+      );
     }
 
     // Read the file as an ArrayBuffer
@@ -73,7 +75,7 @@ export async function importDatabase(file: File): Promise<boolean> {
 
     return true;
   } catch (error: any) {
-    console.error('Error importing database:', error);
+    console.error("Error importing database:", error);
     throw new Error(`Failed to import database: ${error.message}`);
   }
 }
@@ -83,22 +85,24 @@ export async function importDatabase(file: File): Promise<boolean> {
  * @param {Function} onFileSelected Callback function to handle the selected file
  * @returns {HTMLInputElement} The file input element
  */
-export function createFileInput(onFileSelected: (file: File) => void): HTMLInputElement {
+export function createFileInput(
+  onFileSelected: (file: File) => void
+): HTMLInputElement {
   // Create a file input element
-  const fileInput = document.createElement('input');
-  fileInput.type = 'file';
-  fileInput.accept = '.sqlite3,.db';
-  fileInput.style.display = 'none';
+  const fileInput = document.createElement("input");
+  fileInput.type = "file";
+  fileInput.accept = ".sqlite3,.db";
+  fileInput.style.display = "none";
 
   // Set up the change event handler
-  fileInput.addEventListener('change', (event: Event) => {
+  fileInput.addEventListener("change", (event: Event) => {
     const target = event.target as HTMLInputElement;
     const file = target.files?.[0];
     if (file) {
       onFileSelected(file);
     }
     // Clean up to allow selecting the same file again
-    fileInput.value = '';
+    fileInput.value = "";
   });
 
   document.body.appendChild(fileInput);

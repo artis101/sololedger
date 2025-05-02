@@ -113,4 +113,15 @@ export interface InvoiceWithItems {
 
 // Array representation of database records
 export type ClientRow = [number, string, string | null, string | null]; // [id, name, email, address]
-export type InvoiceRow = [number, string, string, string, number, number | null, number | null, string | null, string | null, string | null]; // [id, number, date, clientName, total, paid, locked, locked_at, paid_at, sent_at]
+export type InvoiceRow = [
+  number,
+  string,
+  string,
+  string,
+  number,
+  number | null,
+  number | null,
+  string | null,
+  string | null,
+  string | null
+]; // [id, number, date, clientName, total, paid, locked, locked_at, paid_at, sent_at]
