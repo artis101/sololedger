@@ -1,7 +1,6 @@
-import { saveInvoice, getInvoiceWithItems, deleteInvoice, listClients, syncDbToDrive } from '../db.js';
+import { saveInvoice, getInvoiceWithItems, deleteInvoice, listClients } from '../db.js';
 import { renderInvoices, toggle, $, addItemRow } from '../ui.js';
 import { buildPdf } from '../pdf.js';
-import { driveFileId } from './drive.js';
 import { updateInvoicePreview } from './preview.js';
 
 // Initialize invoice-related event handlers
@@ -41,7 +40,14 @@ export function initInvoiceHandlers() {
 
   // Edit/Delete from table
   $('#invoice-table').addEventListener('click', async (e) => {
-    if (e.target.matches('.edit-invoice')) {
+    if (e.target.matches('.view-pdf')) {
+      const id = Number(e.target.dataset.id);
+      const invoice = await getInvoiceWithItems(id);
+      if (invoice) {
+        // Generate and open PDF
+        buildPdf(invoice);
+      }
+    } else if (e.target.matches('.edit-invoice')) {
       const id = Number(e.target.dataset.id);
       const invoice = await getInvoiceWithItems(id);
       if (invoice) {
@@ -67,8 +73,7 @@ export function initInvoiceHandlers() {
       if (confirm('Are you sure you want to delete this invoice?')) {
         try {
           await deleteInvoice(id);
-            await renderInvoices();
-            // Drive sync now manual via the Connect/Sync button
+          await renderInvoices();
         } catch (error) {
           console.error('Error deleting invoice:', error);
           alert(`Error deleting invoice: ${error.message}`);
@@ -84,7 +89,6 @@ export function initInvoiceHandlers() {
       try {
         await deleteInvoice(id);
         await renderInvoices();
-        // Drive sync now manual via the Connect/Sync button
         toggle($('#invoice-modal'), false);
       } catch (error) {
         console.error('Error deleting invoice:', error);
@@ -109,7 +113,6 @@ export function initInvoiceHandlers() {
         number: fd.get('number'), date: fd.get('date'), clientId: Number(fd.get('clientId')), total };
       await saveInvoice(header, items);
       await renderInvoices();
-      // Drive sync now manual via the Connect/Sync button
       toggle($('#invoice-modal'), false);
       form.reset(); $('#items-table tbody').innerHTML = '';
     } catch (error) {
@@ -135,7 +138,6 @@ export function initInvoiceHandlers() {
         number: fd.get('number'), date: fd.get('date'), clientId: Number(fd.get('clientId')), total };
       const saved = await saveInvoice(header, items);
       await renderInvoices();
-      // Drive sync now manual via the Connect/Sync button
       const full = await getInvoiceWithItems(saved);
       buildPdf(full);
       toggle($('#invoice-modal'), false);

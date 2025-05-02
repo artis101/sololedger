@@ -108,7 +108,7 @@ async function initSql() {
       description TEXT,
       qty REAL,
       unit REAL,
-      FOREIGN KEY (invoice_id) REFERENCES invoices(id)
+      FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE
   );`);
   runMigrations();
   return true;
@@ -216,12 +216,8 @@ function exportDb() {
 
 function deleteInvoice(id) {
   return withTransaction(() => {
-    const delItems = db.prepare("DELETE FROM invoice_items WHERE invoice_id=?");
-    try {
-      delItems.run([id]);
-    } finally {
-      delItems.free();
-    }
+    // With ON DELETE CASCADE, we only need to delete the invoice
+    // and all related items will be automatically deleted
     const delInv = db.prepare("DELETE FROM invoices WHERE id=?");
     try {
       delInv.run([id]);
@@ -234,6 +230,9 @@ function deleteInvoice(id) {
 
 function saveInvoice(header, items) {
   return withTransaction(() => {
+    // Calculate the total from items to ensure consistency
+    const calculatedTotal = items.reduce((sum, item) => sum + (item.qty * item.unit), 0);
+    
     let invoiceId;
     if (header.id) {
       const stmt = db.prepare(
@@ -244,7 +243,7 @@ function saveInvoice(header, items) {
           header.number,
           header.date,
           header.clientId,
-          header.total,
+          calculatedTotal, // Use calculated total instead of header.total
           header.id,
         ]);
       } finally {
@@ -262,7 +261,7 @@ function saveInvoice(header, items) {
         "INSERT INTO invoices (number,date,client_id,total) VALUES (?,?,?,?)"
       );
       try {
-        stmt.run([header.number, header.date, header.clientId, header.total]);
+        stmt.run([header.number, header.date, header.clientId, calculatedTotal]); // Use calculated total
       } finally {
         stmt.free();
       }

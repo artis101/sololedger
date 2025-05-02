@@ -4,8 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SoloLedger - 100% client side invoicing app</title>
-    <script src="https://apis.google.com/js/api.js"></script>
-    <script src="https://accounts.google.com/gsi/client"></script>
     <link rel="stylesheet" href="/src/index.css" />
     <script type="module" src="/src/main.js"></script>
   </head>
@@ -13,21 +11,6 @@
     <main id="app" class="max-w-5xl mx-auto">
       <header class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-bold">SoloLedger</h1>
-        <button
-          id="gdrive-btn"
-          class="px-4 py-2 rounded-lg bg-blue-600 text-white shadow"
-        >
-          Connect Google Drive
-        </button>
-        <span
-          id="gdrive-status"
-          class="ml-4 px-2 py-1 text-sm font-medium text-gray-700 bg-gray-200 rounded"
-        >
-          Not connected
-        </span>
-        <span id="gdrive-last-sync" class="ml-2 text-sm text-gray-500 hidden">
-          Last sync: --
-        </span>
       </header>
 
       <!-- CLIENTS ---------------------------------------------------->

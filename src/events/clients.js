@@ -1,6 +1,5 @@
-import { saveClient, getClient, deleteClient, syncDbToDrive } from '../db.js';
+import { saveClient, getClient, deleteClient } from '../db.js';
 import { renderClients, toggle, $ } from '../ui.js';
-import { driveFileId } from './drive.js';
 
 // Initialize client-related event handlers
 export function initClientHandlers() {
@@ -36,7 +35,6 @@ export function initClientHandlers() {
         try {
           await deleteClient(id);
           await renderClients();
-            // Drive sync now manual via the Connect/Sync button
         } catch (error) {
           console.error('Error deleting client:', error);
           alert(`Error deleting client: ${error.message}`);
@@ -52,7 +50,6 @@ export function initClientHandlers() {
       try {
         await deleteClient(id);
         await renderClients();
-            // Drive sync now manual via the Connect/Sync button
         toggle($('#client-modal'), false);
       } catch (error) {
         console.error('Error deleting client:', error);
@@ -74,7 +71,6 @@ export function initClientHandlers() {
         address: fd.get('address'),
       });
       await renderClients();
-      // Drive sync now manual via the Connect/Sync button
       toggle($('#client-modal'), false);
       e.target.reset();
     } catch (error) {

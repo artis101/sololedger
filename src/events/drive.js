@@ -3,10 +3,85 @@ import { exportDb, loadDb, syncDbToDrive } from '../db.js';
 import { renderClients, renderInvoices, $ } from '../ui.js';
 
 // Current Google Drive file ID (live-bound)
-export let driveFileId = null;
+// Try to restore from localStorage if available
+export let driveFileId = localStorage.getItem('driveFileId') || null;
+
+// Update Drive connection status in UI
+function updateDriveStatus() {
+  const statusEl = $('#gdrive-status');
+  const lastSyncEl = $('#gdrive-last-sync');
+  
+  if (driveFileId) {
+    statusEl.textContent = 'Connected';
+    statusEl.classList.remove('text-gray-700', 'bg-gray-200', 'text-red-700', 'bg-red-200');
+    statusEl.classList.add('text-green-700', 'bg-green-200');
+    $('#gdrive-btn').textContent = 'Sync to Google Drive';
+    
+    // Show disconnect UI if it exists
+    if ($('#gdrive-disconnect-btn')) {
+      $('#gdrive-disconnect-btn').classList.remove('hidden');
+    }
+    
+    // Restore last sync time if available
+    const lastSync = localStorage.getItem('lastDriveSync');
+    if (lastSync) {
+      lastSyncEl.textContent = `Last sync: ${lastSync}`;
+      lastSyncEl.classList.remove('hidden');
+    }
+  } else {
+    statusEl.textContent = 'Not connected';
+    statusEl.classList.remove('text-green-700', 'bg-green-200', 'text-red-700', 'bg-red-200');
+    statusEl.classList.add('text-gray-700', 'bg-gray-200');
+    $('#gdrive-btn').textContent = 'Connect Google Drive';
+    lastSyncEl.classList.add('hidden');
+    
+    // Hide disconnect UI if it exists
+    if ($('#gdrive-disconnect-btn')) {
+      $('#gdrive-disconnect-btn').classList.add('hidden');
+    }
+  }
+}
+
+// Disconnect from Google Drive
+function disconnectFromDrive() {
+  // Clear storage
+  localStorage.removeItem('driveFileId');
+  localStorage.removeItem('lastDriveSync');
+  
+  // Reset state
+  driveFileId = null;
+  
+  // Update UI
+  updateDriveStatus();
+}
 
 // Initialize Google Drive integration
 export function initDriveHandlers() {
+  // Check initial connection status
+  updateDriveStatus();
+  
+  // Add disconnect button if it doesn't exist
+  if (!$('#gdrive-disconnect-btn')) {
+    const disconnectBtn = document.createElement('button');
+    disconnectBtn.id = 'gdrive-disconnect-btn';
+    disconnectBtn.classList.add('text-sm', 'text-red-600', 'ml-2', 'cursor-pointer');
+    disconnectBtn.textContent = 'Disconnect';
+    if (!driveFileId) {
+      disconnectBtn.classList.add('hidden');
+    }
+    
+    // Insert after the last sync element
+    $('#gdrive-last-sync').after(disconnectBtn);
+    
+    // Add click handler
+    disconnectBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (confirm('Are you sure you want to disconnect from Google Drive? Your local data will remain intact.')) {
+        disconnectFromDrive();
+      }
+    });
+  }
+  
   $('#gdrive-btn').onclick = async () => {
     // Elements for displaying connection status and last sync
     const statusEl = $('#gdrive-status');
@@ -21,8 +96,12 @@ export function initDriveHandlers() {
         if (ok) {
           // Update last sync timestamp
           const now = new Date();
-          lastSyncEl.textContent = `Last sync: ${now.toLocaleString()}`;
+          const syncTime = now.toLocaleString();
+          lastSyncEl.textContent = `Last sync: ${syncTime}`;
           lastSyncEl.classList.remove('hidden');
+          
+          // Save last sync time to localStorage
+          localStorage.setItem('lastDriveSync', syncTime);
           statusEl.textContent = 'Connected';
           statusEl.classList.remove('text-blue-700', 'bg-blue-200');
           statusEl.classList.add('text-green-700', 'bg-green-200');
@@ -31,12 +110,6 @@ export function initDriveHandlers() {
           statusEl.classList.remove('text-blue-700', 'bg-blue-200');
           statusEl.classList.add('text-red-700', 'bg-red-200');
         }
-        return;
-      }
-      // Manual sync: if already connected, just sync on button click
-      if (driveFileId) {
-        const ok = await syncDbToDrive(driveFileId);
-        console.log(ok ? 'Database synced to Google Drive' : 'Google Drive sync failed');
         return;
       }
       if (!CLIENT_ID) {
@@ -79,6 +152,9 @@ export function initDriveHandlers() {
       });
       if (list.result.files.length) {
         driveFileId = list.result.files[0].id;
+        // Save to localStorage
+        localStorage.setItem('driveFileId', driveFileId);
+        
         const file = await gapi.client.drive.files.get({ fileId: driveFileId, alt: 'media' });
         const data = new Uint8Array(file.body.split('').map((c) => c.charCodeAt(0)));
         loadDb(data);
@@ -91,16 +167,24 @@ export function initDriveHandlers() {
         });
         if (!resp.ok) throw new Error(`API error: ${resp.status} ${await resp.text()}`);
         driveFileId = (await resp.json()).id;
+        // Save to localStorage
+        localStorage.setItem('driveFileId', driveFileId);
       }
       await renderClients();
       await renderInvoices();
       console.log('Google Drive linked ✔');
-      // Update button to allow manual sync from now on
-      $('#gdrive-btn').textContent = 'Sync to Google Drive';
-      // Update connection status indicator
-      statusEl.textContent = 'Connected';
-      statusEl.classList.remove('text-gray-700', 'bg-gray-200');
-      statusEl.classList.add('text-green-700', 'bg-green-200');
+      
+      // Update UI status indicators
+      updateDriveStatus();
+      
+      // Set last sync time
+      const now = new Date();
+      const syncTime = now.toLocaleString();
+      lastSyncEl.textContent = `Last sync: ${syncTime}`;
+      lastSyncEl.classList.remove('hidden');
+      
+      // Save last sync time to localStorage
+      localStorage.setItem('lastDriveSync', syncTime);
     } catch (error) {
       console.error('Google Drive error:', error);
       console.log(`Google Drive connection error: ${error.message}`);

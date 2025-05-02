@@ -3,7 +3,6 @@ import "./index.css";
 import { renderClients, renderInvoices } from "./ui.js";
 import { initClientHandlers } from "./events/clients.js";
 import { initInvoiceHandlers } from "./events/invoices.js";
-import { initDriveHandlers } from "./events/drive.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
   try {
@@ -19,5 +18,4 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   initClientHandlers();
   initInvoiceHandlers();
-  initDriveHandlers();
 });
