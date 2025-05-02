@@ -18,7 +18,7 @@ export function createInvoiceHTML(invoice, businessSettings) {
   const containerDiv = document.createElement('div');
   containerDiv.id = 'invoice-html-template';
   containerDiv.className = 'bg-white p-8';
-  containerDiv.style.cssText = 'font-family: Roboto, Arial, sans-serif; position: fixed; left: -9999px; top: -9999px; width: 210mm; height: 297mm; box-sizing: border-box;';
+  containerDiv.style.cssText = 'font-family: Roboto, Arial, sans-serif; position: fixed; left: -9999px; top: -9999px; width: 210mm; height: 297mm; box-sizing: border-box; font-size: 12px;';
   
   // Get currency symbol from settings or default to Euro
   const currencySymbol = businessSettings?.currency ? 
@@ -65,6 +65,10 @@ export function createInvoiceHTML(invoice, businessSettings) {
             ${invoice.header.paid ? 
               `<div class="mb-4 -mt-3 inline-block bg-green-100 text-green-800 px-4 py-1 rounded-lg border-2 border-green-300 transform rotate-1">
                 <span class="text-xl font-bold">PAID</span>
+              </div>` : ''}
+            ${invoice.header.locked ? 
+              `<div class="mb-4 -mt-3 ${invoice.header.paid ? 'ml-2' : ''} inline-block bg-red-100 text-red-800 px-4 py-1 rounded-lg border-2 border-red-300 transform rotate-1">
+                <span class="text-xl font-bold">🔒 LOCKED</span>
               </div>` : ''}
           </div>
           <p class="text-xl mb-1"><span class="text-gray-600">Invoice #:</span> ${invoice.header.number}</p>
@@ -164,7 +168,7 @@ export function createInvoiceHTML(invoice, businessSettings) {
   return containerDiv;
 }
 
-export async function buildHtmlPdf(invoice, { previewEl = null, open = true, businessSettings = null } = {}) {
+export async function buildHtmlPdf(invoice, { previewEl = null, open = true, businessSettings = null, previewMode = false } = {}) {
   try {
     // Create the HTML invoice
     const invoiceDiv = createInvoiceHTML(invoice, businessSettings);
@@ -172,18 +176,26 @@ export async function buildHtmlPdf(invoice, { previewEl = null, open = true, bus
     // Wait a moment for styles to apply
     await new Promise(resolve => setTimeout(resolve, 100));
     
-    // Convert HTML to canvas with high quality
-    const canvas = await html2canvas(invoiceDiv, {
-      scale: 3, // Higher scale for better quality
+    // Configure canvas settings based on mode
+    const canvasSettings = {
+      scale: previewMode ? 1.5 : 3, // Lower scale for preview to improve performance
       useCORS: true, 
       logging: false,
       allowTaint: true,
       backgroundColor: '#ffffff',
       width: 595, // A4 width in points at 72 DPI
       height: 842, // A4 height in points at 72 DPI
-      windowWidth: 595,
-      windowHeight: 842
-    });
+      scrollX: 0,
+      scrollY: 0,
+      x: 0,
+      y: 0,
+      // Make PDF look better
+      letterRendering: true,
+      foreignObjectRendering: false // Use the slower but more accurate canvas rendering
+    };
+    
+    // Convert HTML to canvas with appropriate quality
+    const canvas = await html2canvas(invoiceDiv, canvasSettings);
     
     // Remove the temporary div
     document.body.removeChild(invoiceDiv);
@@ -192,15 +204,23 @@ export async function buildHtmlPdf(invoice, { previewEl = null, open = true, bus
     const pdfDoc = await PDFDocument.create();
     const page = pdfDoc.addPage([595, 842]); // A4 size in points at 72 DPI
     
-    // Convert canvas to image
-    const jpgImage = canvas.toDataURL('image/jpeg', 1.0);
+    // Convert canvas to image with appropriate quality based on mode
+    const imageQuality = previewMode ? 0.85 : 1.0;
+    const imgFormat = previewMode ? 'image/png' : 'image/jpeg'; // PNG for preview for better text clarity
+    const imgData = canvas.toDataURL(imgFormat, imageQuality);
     
     // Remove the data URL prefix to get just the base64 data
-    const base64Data = jpgImage.replace(/^data:image\/(png|jpeg);base64,/, '');
+    const base64Data = imgData.replace(/^data:image\/(png|jpeg);base64,/, '');
     
-    // Embed the image in the PDF
-    const jpgImageBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-    const image = await pdfDoc.embedJpg(jpgImageBytes);
+    // Embed the image in the PDF using the appropriate method
+    let image;
+    if (previewMode) {
+      const pngImageBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+      image = await pdfDoc.embedPng(pngImageBytes);
+    } else {
+      const jpgImageBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+      image = await pdfDoc.embedJpg(jpgImageBytes);
+    }
     
     // Draw the image on the PDF using the full page
     page.drawImage(image, {
@@ -210,15 +230,20 @@ export async function buildHtmlPdf(invoice, { previewEl = null, open = true, bus
       height: page.getHeight(),
     });
     
-    // Save the PDF
-    const pdfBytes = await pdfDoc.save();
+    // Save the PDF with appropriate compression
+    const pdfBytes = await pdfDoc.save({ 
+      useObjectStreams: !previewMode // More compression for final PDFs, less for previews
+    });
+    
     const blob = new Blob([pdfBytes], { type: "application/pdf" });
     const url = URL.createObjectURL(blob);
     
     // Display or open the PDF
     if (previewEl) {
-      previewEl.src = url;
+      // Add a cache-busting parameter to prevent stale previews
+      previewEl.src = url + '#t=' + new Date().getTime();
     }
+    
     if (open) {
       window.open(url, "_blank");
     }
