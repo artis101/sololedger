@@ -1,4 +1,5 @@
 import initSqlJs from 'sql.js';
+import sqlWasmUrl from 'sql.js/dist/sql-wasm.wasm?url';
 
 // IndexedDB persistence (works in Web Worker)
 const IDB_DB_NAME = 'sololedger';
@@ -69,7 +70,9 @@ function runMigrations() {
 
 // Initialize SQL.js and local database
 async function initSql() {
-  SQL = await initSqlJs({ locateFile: file => file });
+  SQL = await initSqlJs({
+    locateFile: () => sqlWasmUrl
+  });
   let loaded = false;
   try {
     loaded = await loadLocal();
